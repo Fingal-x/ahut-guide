@@ -206,26 +206,35 @@ ol.steps li b{color:var(--blue-dark);}
 .link-card .t{font-weight:700;color:var(--blue-dark);font-size:14px;}
 .link-card .d{font-size:12px;color:var(--muted);}
 
-/* ===== 首页：快速导航网格（仿马院 menu-grid） ===== */
-.menu-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px;
+/* ===== 首页：快速导航网格（马院式：3列上图下文卡片） ===== */
+.section-title{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg);border-left:4px solid var(--blue);
+  padding:10px 14px;border-radius:8px;font-size:16px;font-weight:700;color:var(--blue-dark);
+  margin-bottom:12px;
 }
-@media(max-width:720px){.menu-grid{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:420px){.menu-grid{grid-template-columns:1fr;}}
+.menu-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:0;
+}
 .menu-item{
-  display:flex;align-items:center;gap:12px;background:var(--card);
-  border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);
-  padding:18px 16px;transition:.2s;color:var(--ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);padding:18px 8px;text-align:center;
+  transition:.2s;color:var(--ink);
 }
 .menu-item:hover{
-  border-color:var(--blue);transform:translateY(-2px);box-shadow:0 4px 14px rgba(15,76,129,.18);text-decoration:none;
+  border-color:var(--blue);transform:translateY(-2px);
+  box-shadow:0 4px 14px rgba(15,76,129,.18);text-decoration:none;
 }
-.menu-item .menu-icon{
-  width:44px;height:44px;border-radius:11px;background:var(--blue-light);
-  display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;
+.menu-item .menu-icon{font-size:30px;line-height:1;flex-shrink:0;}
+.menu-item .menu-label{font-weight:600;color:var(--ink);font-size:14px;}
+.menu-item .menu-desc{display:none;}
+@media(max-width:720px){
+  .menu-grid{gap:10px;}
+  .menu-item{padding:14px 6px;}
+  .menu-item .menu-icon{font-size:26px;}
+  .menu-item .menu-label{font-size:13px;}
 }
-.menu-item .menu-label{font-weight:700;color:var(--blue-dark);font-size:15px;}
-.menu-item .menu-desc{font-size:12px;color:var(--muted);margin-top:1px;}
 
 /* ===== 首页：学校信息横幅（仿马院） ===== */
 .school-info-banner{
