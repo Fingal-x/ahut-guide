@@ -327,7 +327,7 @@ ol.steps li b{color:var(--blue-dark);}
 .wechat-btn-primary:hover{background:#06ad56;}
 .wechat-toast{display:none;font-size:13px;color:#07a754;margin-top:10px;}
 .wechat-toast.show{display:block;}
-@media(max-width:900px){.qq-float{bottom:74px;}}
+@media(max-width:900px){.qq-float{bottom:142px;}}
 /* 页脚 */
 footer{
   background:var(--blue-dark);color:#cfe0f0;text-align:center;
