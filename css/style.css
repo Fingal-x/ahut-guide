@@ -92,16 +92,16 @@ a:hover{text-decoration:underline;}
 .wrap{max-width:960px;margin:30px auto 60px;padding:0 20px;}
 section.block{scroll-margin-top:18px;}
 
-/* 速览指标 */
+/* 速览指标（马院式：白卡+深蓝大数字+灰小标签） */
 .metrics{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;
 }
 .metric{
-  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
-  padding:22px 16px;text-align:center;box-shadow:var(--shadow);
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:20px 12px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.05);
 }
-.metric .num{font-size:30px;font-weight:800;color:var(--blue);}
-.metric .label{font-size:14px;color:var(--muted);margin-top:4px;}
+.metric .num{font-size:28px;font-weight:800;color:#1e3a8a;}
+.metric .label{font-size:13px;color:#6b7280;margin-top:4px;}
 
 /* 通用区块 */
 section.block{
@@ -236,17 +236,20 @@ ol.steps li b{color:var(--blue-dark);}
   .menu-item .menu-label{font-size:13px;}
 }
 
-/* ===== 首页：学校信息横幅（仿马院） ===== */
+/* =/* ===== 首页：学校信息横幅（马院式：蓝色渐变+半透明子项+金色高亮） ===== */
 .school-info-banner{
   display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;
+  background:linear-gradient(135deg,#3b82f6 0%,#06b6d4 100%);
+  border-radius:22px;padding:20px;
 }
 @media(max-width:720px){.school-info-banner{grid-template-columns:1fr;}}
 .school-info-card{
-  display:flex;align-items:center;gap:10px;background:var(--bg);
-  border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:14px;
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.2);
+  border-radius:12px;padding:12px 14px;font-size:14px;color:#fff;line-height:1.5;
 }
-.school-info-card .info-icon{font-size:18px;}
-.school-info-card .info-highlight{color:var(--blue);font-weight:700;}
+.school-info-card .info-icon{font-size:18px;flex-shrink:0;}
+.school-info-card .info-highlight{color:#ffd34d;font-weight:700;}
 
 /* 页脚 */
 footer{
