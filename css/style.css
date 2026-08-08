@@ -92,16 +92,16 @@ a:hover{text-decoration:underline;}
 .wrap{max-width:960px;margin:30px auto 60px;padding:0 20px;}
 section.block{scroll-margin-top:18px;}
 
-/* 速览指标（马院式：白卡+深蓝大数字+灰小标签） */
+/* 速览指标 */
 .metrics{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;
 }
 .metric{
-  background:var(--card);border:1px solid var(--border);border-radius:16px;
-  padding:20px 12px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.05);
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px 16px;text-align:center;box-shadow:var(--shadow);
 }
-.metric .num{font-size:28px;font-weight:800;color:#1e3a8a;}
-.metric .label{font-size:13px;color:#6b7280;margin-top:4px;}
+.metric .num{font-size:30px;font-weight:800;color:var(--blue);}
+.metric .label{font-size:14px;color:var(--muted);margin-top:4px;}
 
 /* 通用区块 */
 section.block{
@@ -236,21 +236,98 @@ ol.steps li b{color:var(--blue-dark);}
   .menu-item .menu-label{font-size:13px;}
 }
 
-/* =/* ===== 首页：学校信息横幅（马院式：蓝色渐变+半透明子项+金色高亮） ===== */
+/* ===== 首页：学校信息横幅（仿马院） ===== */
 .school-info-banner{
   display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;
-  background:linear-gradient(135deg,#3b82f6 0%,#06b6d4 100%);
-  border-radius:22px;padding:20px;
 }
 @media(max-width:720px){.school-info-banner{grid-template-columns:1fr;}}
 .school-info-card{
-  display:flex;align-items:center;gap:10px;
-  background:rgba(255,255,255,.2);
-  border-radius:12px;padding:12px 14px;font-size:14px;color:#fff;line-height:1.5;
+  display:flex;align-items:center;gap:10px;background:var(--bg);
+  border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:14px;
 }
-.school-info-card .info-icon{font-size:18px;flex-shrink:0;}
-.school-info-card .info-highlight{color:#ffd34d;font-weight:700;}
+.school-info-card .info-icon{font-size:18px;}
+.school-info-card .info-highlight{color:var(--blue);font-weight:700;}
 
+
+/* ===== 校区地图卡片 ===== */
+.map-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;}
+@media(max-width:720px){.map-grid{grid-template-columns:1fr;}}
+.map-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;box-shadow:var(--shadow);
+}
+.map-card img{width:100%;height:auto;display:block;}
+.map-card .map-cap{
+  padding:10px 14px;font-size:13px;color:var(--muted);text-align:center;
+  border-top:1px solid var(--border);background:var(--bg);
+}
+.map-tip{
+  margin-top:14px;background:#fff8e6;border:1px solid #f0dc9a;border-radius:10px;
+  padding:10px 14px;font-size:13px;color:#7a5c00;text-align:center;
+}
+
+/* ===== 校区地图：统一尺寸 + 点击放大 ===== */
+.map-card img{
+  width:100%;height:auto;display:block;
+  aspect-ratio:4/3;object-fit:contain;background:#eef2f6;
+  cursor:zoom-in;transition:.2s;
+}
+.map-card img:hover{opacity:.9;}
+
+/* ===== 学院分布表格 ===== */
+.campus-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px;}
+.campus-table th,.campus-table td{border:1px solid var(--border);padding:10px 12px;text-align:left;}
+.campus-table th{background:var(--blue-light);color:var(--blue-dark);font-weight:700;}
+.campus-table tr:nth-child(even){background:var(--bg);}
+.badge-jc{display:inline-block;background:#e8f4fd;color:#0f4c81;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;}
+.badge-xs{display:inline-block;background:#eafaf0;color:#1a7f4b;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;}
+
+/* ===== Lightbox 点击放大 ===== */
+.lightbox{
+  position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:100;
+  display:none;align-items:center;justify-content:center;cursor:zoom-out;
+}
+.lightbox.show{display:flex;}
+.lightbox img{max-width:94%;max-height:92%;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+.lightbox .lb-close{position:absolute;top:14px;right:22px;color:#fff;font-size:36px;cursor:pointer;line-height:1;font-weight:300;}
+
+/* ===== 微信悬浮按钮与弹窗（马院式） ===== */
+.qq-float{
+  position:fixed;right:20px;bottom:84px;z-index:70;width:52px;height:52px;border-radius:50%;
+  background:linear-gradient(135deg,#07c160,#06ad56);color:#fff;font-size:24px;border:none;cursor:pointer;
+  box-shadow:0 4px 14px rgba(7,193,96,.4);display:flex;align-items:center;justify-content:center;transition:.2s;
+}
+.qq-float:hover{transform:scale(1.08);}
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:90;display:none;
+  align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.show{display:flex;}
+.modal-content{
+  background:#fff;border-radius:18px;max-width:340px;width:100%;overflow:hidden;
+  box-shadow:0 12px 40px rgba(0,0,0,.3);animation:modalIn .25s ease;
+}
+@keyframes modalIn{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+.wechat-modal-header{background:linear-gradient(135deg,#07c160,#06ad56);color:#fff;padding:20px 22px;text-align:center;}
+.wechat-modal-header h3{font-size:17px;margin-bottom:4px;}
+.wechat-modal-subtitle{font-size:13px;opacity:.9;}
+.wechat-modal-body{padding:20px 22px;text-align:center;}
+.wechat-label{font-size:12px;color:var(--muted);margin-bottom:8px;}
+.wechat-id-box{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--bg);border:1px solid var(--border);border-radius:10px;
+  padding:12px;margin-bottom:10px;font-size:16px;font-weight:700;color:var(--ink);
+}
+.wechat-note{font-size:12px;color:var(--muted);margin:10px 0 4px;}
+.wechat-hint{font-size:12px;color:#07a754;margin-bottom:14px;}
+.wechat-actions{display:flex;gap:10px;}
+.wechat-btn{flex:1;border:none;border-radius:10px;padding:12px;font-size:14px;cursor:pointer;font-weight:600;}
+.wechat-btn-outline{background:var(--bg);color:var(--muted);}
+.wechat-btn-primary{background:#07c160;color:#fff;}
+.wechat-btn-primary:hover{background:#06ad56;}
+.wechat-toast{display:none;font-size:13px;color:#07a754;margin-top:10px;}
+.wechat-toast.show{display:block;}
+@media(max-width:900px){.qq-float{bottom:74px;}}
 /* 页脚 */
 footer{
   background:var(--blue-dark);color:#cfe0f0;text-align:center;

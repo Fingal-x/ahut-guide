@@ -21,7 +21,9 @@
   <a href="report.html"><span class="nav-icon">📝</span><span>报到流程</span></a>
   <a href="military.html"><span class="nav-icon">💪</span><span>军训指南</span></a>
   <a href="study.html"><span class="nav-icon">📚</span><span>学习攻略</span></a>
-  <a href="plan.html"><span class="nav-icon">🧭</span><span>大学规划</span></a>
+
+  <a href="transfer.html"><span class="nav-icon">🔄</span><span>转专业</span></a>
+  <a href="awards.html"><span class="nav-icon">🏅</span><span>评奖评优</span></a>  <a href="plan.html"><span class="nav-icon">🧭</span><span>大学规划</span></a>
   <a href="colleges.html"><span class="nav-icon">🏫</span><span>学院专业</span></a>
   <a href="campus.html" class="active"><span class="nav-icon">📍</span><span>校区信息</span></a>
   <a href="clubs.html"><span class="nav-icon">🎯</span><span>校园生活</span></a>
@@ -42,7 +44,51 @@
 
 <div class="wrap">
 
+  
   <section class="block">
+    <h2>🗺️ 校区地图</h2>
+    <p class="lead">校区卫星导览图（点击可查看大图）</p>
+    <div class="map-grid">
+      <div class="map-card">
+        <img src="images/campus-map-1.jpg" alt="佳山校区地图：含主楼、教学楼、图书馆、食堂、运动场等设施标注" data-zoom="images/campus-map-1.jpg" loading="lazy">
+        <div class="map-cap">📌 佳山校区地图（点击放大）</div>
+      </div>
+      <div class="map-card">
+        <img src="images/campus-map-2.jpg" alt="秀山校区地图：含图书馆、逸夫楼、大礼堂、教学楼、宿舍区、明湖等设施标注" data-zoom="images/campus-map-2.jpg" loading="lazy">
+        <div class="map-cap">📌 秀山校区地图（点击放大）</div>
+      </div>
+    </div>
+    <div class="map-tip">⚠️ 地图仅供参考，细节部分可能会有差异，具体以校园实际布局为准</div>
+  </section>
+
+
+  <section class="block">
+    <h2>🏫 学院分布与住宿</h2>
+    <p class="lead">各学院所在校区（源自各学院官网地址信息，2026年8月核实）</p>
+    <div class="notice">📍 <b>大学四年住在哪：</b>住宿由学校统一安排，报到时由学院分配宿舍楼和床位。佳山、秀山两校区均设有学生宿舍，<b>具体住哪个校区、哪栋楼，以报到现场安排和《学生手册》为准</b>，请勿根据学院所在校区自行推断。</div>
+    <table class="campus-table">
+      <thead><tr><th>学院</th><th>所在校区</th><th>学院地址（官网信息）</th></tr></thead>
+      <tbody>
+      <tr><td>冶金工程学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区冶金楼</td></tr>
+      <tr><td>材料科学与工程学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区</td></tr>
+      <tr><td>化学与化工学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区</td></tr>
+      <tr><td>机械工程学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区</td></tr>
+      <tr><td>电气与信息工程学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区电气楼</td></tr>
+      <tr><td>计算机科学与技术学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区先进技术研究中心</td></tr>
+      <tr><td>建筑工程学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区</td></tr>
+      <tr><td>管理科学与工程学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区</td></tr>
+      <tr><td>商学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区</td></tr>
+      <tr><td>微电子与数据科学学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区</td></tr>
+      <tr><td>艺术与设计学院</td><td><span class="badge-xs">秀山校区</span></td><td>秀山校区</td></tr>
+      <tr><td>能源与环境学院</td><td><span class="badge-jc">佳山校区</span></td><td>佳山校区能源楼</td></tr>
+      <tr><td>公共管理与法学院</td><td><span class="badge-jc">佳山校区</span></td><td>佳山校区公法楼</td></tr>
+      <tr><td>外国语学院</td><td><span class="badge-jc">佳山校区</span></td><td>佳山校区</td></tr>
+      </tbody>
+    </table>
+    <div class="alert" style="margin-top:14px;">ℹ️ 校区分布可能随学校规划调整，最新情况以学校官方通知和录取通知书为准。</div>
+  </section>
+
+<section class="block">
     <h2>🏢 两校区对比</h2>
     <p class="lead">地址与邮编来自学校官网页脚（权威信息）</p>
     <div class="grid2">
@@ -141,5 +187,92 @@
 })();
 </script>
 
+
+<!-- Lightbox 图片放大 -->
+<div class="lightbox" id="lightbox" role="dialog" aria-label="放大地图">
+  <img id="lightbox-img" alt="放大地图">
+  <span class="lb-close" id="lb-close" aria-label="关闭">×</span>
+</div>
+
+<script>
+(function(){
+  var nav = document.getElementById('sidebar-nav');
+  var mask = document.getElementById('sidebar-mask');
+  var btn = document.getElementById('menu-btn');
+  function closeSide(){ nav.classList.remove('open'); mask.classList.remove('show'); }
+  if (btn) btn.addEventListener('click', function(){
+    nav.classList.toggle('open');
+    mask.classList.toggle('show');
+  });
+  if (mask) mask.addEventListener('click', closeSide);
+  nav.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click', function(){ if (window.innerWidth <= 900) closeSide(); });
+  });
+  // 地图点击放大
+  var lb = document.getElementById('lightbox');
+  var lbImg = document.getElementById('lightbox-img');
+  function closeLb(){ if (lb) lb.classList.remove('show'); }
+  document.querySelectorAll('.map-card img').forEach(function(img){
+    img.addEventListener('click', function(){
+      lbImg.src = img.getAttribute('data-zoom') || img.src;
+      lb.classList.add('show');
+    });
+  });
+  if (lb) {
+    lb.addEventListener('click', closeLb);
+    var lbc = document.getElementById('lb-close');
+    if (lbc) lbc.addEventListener('click', closeLb);
+  }
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeLb(); });
+})();
+</script>
+
+
+<!-- 微信悬浮按钮 -->
+<button class="qq-float" id="qq-float-btn" title="添加学长微信">💬</button>
+<div class="modal-overlay" id="qq-modal">
+  <div class="modal-content">
+    <div class="wechat-modal-header">
+      <h3>在线答疑 · 学习规划 · 组队选课 · 问题反馈</h3>
+    </div>
+    <div class="wechat-modal-body">
+      <p class="wechat-label">微信号</p>
+      <div class="wechat-id-box" id="wechat-id-1">_17205683416</div>
+      <p class="wechat-note">🎓 本站为电院学长制作 · 遇到各类问题，比如转专业·个人规划·考研保研·网站bug，欢迎添加微信交流和反馈</p>
+      <p class="wechat-hint">👇 点击下方按钮即可复制微信号，打开微信加好友</p>
+      <div class="wechat-actions">
+        <button class="wechat-btn wechat-btn-outline" id="qq-modal-close">稍后再说</button>
+        <button class="wechat-btn wechat-btn-primary" id="qq-copy-btn"><span>📋 复制微信号</span></button>
+      </div>
+      <p id="qq-toast" class="wechat-toast">✅ 已复制！打开微信即可粘贴添加好友</p>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var btn=document.getElementById('qq-float-btn'),modal=document.getElementById('qq-modal'),closeBtn=document.getElementById('qq-modal-close');
+  if(btn)btn.addEventListener('click',function(){modal.classList.add('show');});
+  if(closeBtn)closeBtn.addEventListener('click',function(){modal.classList.remove('show');});
+  if(modal)modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('show');});
+  var copy=document.getElementById('qq-copy-btn'),toast=document.getElementById('qq-toast');
+  if(copy)copy.addEventListener('click',function(){
+    var ids=[];
+    var b1=document.getElementById('wechat-id-1');
+    if(b1)ids.push(b1.textContent.trim());
+    
+    var text=ids.join(' / ');
+    function done(){toast.classList.add('show');setTimeout(function(){toast.classList.remove('show');},2500);}
+    function fallback(){
+      var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();
+      try{document.execCommand('copy');done();}catch(e){}
+      document.body.removeChild(ta);
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(fallback);
+    }else{fallback();}
+  });
+})();
+</script>
+
 </body>
-</html>

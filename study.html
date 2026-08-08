@@ -21,7 +21,9 @@
   <a href="report.html"><span class="nav-icon">📝</span><span>报到流程</span></a>
   <a href="military.html"><span class="nav-icon">💪</span><span>军训指南</span></a>
   <a href="study.html" class="active"><span class="nav-icon">📚</span><span>学习攻略</span></a>
-  <a href="plan.html"><span class="nav-icon">🧭</span><span>大学规划</span></a>
+
+  <a href="transfer.html"><span class="nav-icon">🔄</span><span>转专业</span></a>
+  <a href="awards.html"><span class="nav-icon">🏅</span><span>评奖评优</span></a>  <a href="plan.html"><span class="nav-icon">🧭</span><span>大学规划</span></a>
   <a href="colleges.html"><span class="nav-icon">🏫</span><span>学院专业</span></a>
   <a href="campus.html"><span class="nav-icon">📍</span><span>校区信息</span></a>
   <a href="clubs.html"><span class="nav-icon">🎯</span><span>校园生活</span></a>
@@ -185,5 +187,52 @@
 })();
 </script>
 
+
+<!-- 微信悬浮按钮 -->
+<button class="qq-float" id="qq-float-btn" title="添加学长微信">💬</button>
+<div class="modal-overlay" id="qq-modal">
+  <div class="modal-content">
+    <div class="wechat-modal-header">
+      <h3>在线答疑 · 学习规划 · 组队选课 · 问题反馈</h3>
+    </div>
+    <div class="wechat-modal-body">
+      <p class="wechat-label">微信号</p>
+      <div class="wechat-id-box" id="wechat-id-1">_17205683416</div>
+      <p class="wechat-note">🎓 本站为电院学长制作 · 遇到各类问题，比如转专业·个人规划·考研保研·网站bug，欢迎添加微信交流和反馈</p>
+      <p class="wechat-hint">👇 点击下方按钮即可复制微信号，打开微信加好友</p>
+      <div class="wechat-actions">
+        <button class="wechat-btn wechat-btn-outline" id="qq-modal-close">稍后再说</button>
+        <button class="wechat-btn wechat-btn-primary" id="qq-copy-btn"><span>📋 复制微信号</span></button>
+      </div>
+      <p id="qq-toast" class="wechat-toast">✅ 已复制！打开微信即可粘贴添加好友</p>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var btn=document.getElementById('qq-float-btn'),modal=document.getElementById('qq-modal'),closeBtn=document.getElementById('qq-modal-close');
+  if(btn)btn.addEventListener('click',function(){modal.classList.add('show');});
+  if(closeBtn)closeBtn.addEventListener('click',function(){modal.classList.remove('show');});
+  if(modal)modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('show');});
+  var copy=document.getElementById('qq-copy-btn'),toast=document.getElementById('qq-toast');
+  if(copy)copy.addEventListener('click',function(){
+    var ids=[];
+    var b1=document.getElementById('wechat-id-1');
+    if(b1)ids.push(b1.textContent.trim());
+    
+    var text=ids.join(' / ');
+    function done(){toast.classList.add('show');setTimeout(function(){toast.classList.remove('show');},2500);}
+    function fallback(){
+      var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();
+      try{document.execCommand('copy');done();}catch(e){}
+      document.body.removeChild(ta);
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(fallback);
+    }else{fallback();}
+  });
+})();
+</script>
+
 </body>
-</html>
