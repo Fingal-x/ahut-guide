@@ -328,6 +328,27 @@ ol.steps li b{color:var(--blue-dark);}
 .wechat-toast{display:none;font-size:13px;color:#07a754;margin-top:10px;}
 .wechat-toast.show{display:block;}
 @media(max-width:900px){.qq-float{bottom:142px;}}
+
+/* ===== 转专业 QQ 群横幅 ===== */
+.qq-banner{
+  background:linear-gradient(135deg,#1a6fb5 0%,#0f4c81 100%);
+  border-radius:var(--radius);color:#fff;text-align:center;
+  padding:30px 22px;margin-bottom:26px;position:relative;overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.qq-banner::after{content:"";position:absolute;right:-60px;top:-60px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.07);}
+.qq-banner::before{content:"";position:absolute;left:-40px;bottom:-80px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05);}
+.qq-banner .qb-title{font-size:16px;font-weight:700;margin-bottom:8px;position:relative;z-index:1;}
+.qq-banner .qb-sub{font-size:14px;opacity:.95;margin-bottom:6px;position:relative;z-index:1;}
+.qq-banner .qb-desc{font-size:13px;opacity:.85;margin-bottom:14px;position:relative;z-index:1;}
+.qq-banner .qb-pill{
+  display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);
+  border-radius:999px;padding:6px 18px;font-size:13px;margin-bottom:14px;position:relative;z-index:1;
+}
+.qq-banner .qb-num{
+  font-size:32px;font-weight:800;color:#ffd34d;letter-spacing:2px;position:relative;z-index:1;
+  text-shadow:0 2px 8px rgba(0,0,0,.2);
+}
 /* 页脚 */
 footer{
   background:var(--blue-dark);color:#cfe0f0;text-align:center;
