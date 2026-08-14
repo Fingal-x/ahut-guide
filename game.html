@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🔗 官网链接 | 安工大新生攻略</title>
-  <meta name="description" content="安徽工业大学官方网站汇总：学校官网、教务处、招生网、图书馆、研究生招生等。所有链接均实测可访问（2026年8月核实）">
+  <title>🎮 趣味游戏 | 安工大新生攻略</title>
+  <meta name="description" content="安工大新生攻略趣味游戏板块：内置2048小游戏，学习之余放松一下。">
   <meta name="theme-color" content="#0f4c81">
   <style>html{background:#f6f9fc}</style>
   <link rel="stylesheet" href="css/style.css?v=20260813">
@@ -29,7 +29,8 @@
   <a href="campus.html"><span class="nav-icon">📍</span><span>校区信息</span></a>
   <a href="clubs.html"><span class="nav-icon">🎯</span><span>校园生活</span></a>
   <a href="tips.html"><span class="nav-icon">💡</span><span>学长忠告</span></a>
-  <a href="official.html" class="active"><span class="nav-icon">🔗</span><span>官网链接</span></a>
+  <a href="official.html"><span class="nav-icon">🔗</span><span>官网链接</span></a>
+  <a href="game.html" class="active"><span class="nav-icon">🎮</span><span>趣味游戏</span></a>
   <a href="game.html"><span class="nav-icon">🎮</span><span>趣味游戏</span></a>
   <div class="sidebar-foot">⚠️ 非官方平台<br>内容仅供参考，请以学校官方通知为准</div>
 </nav>
@@ -39,144 +40,22 @@
 
 <!-- ================= Hero ================= -->
 <header class="hero">
-  <span class="badge">🔗 官网链接</span>
-  <h1>安工大官方网站合集</h1>
-  <p class="sub">认准官方渠道，办事不迷路</p>
-  <p class="tag">全部链接<b>实测可访问</b>（2026年8月核实）</p>
+  <span class="badge">🎮 趣味游戏</span>
+  <h1>学累了？来玩一把 2048</h1>
+  <p class="sub">休息 5 分钟，回来效率更高</p>
+  <p class="tag">内置小游戏，无需下载 · 随时可玩</p>
   <button class="search-btn" id="search-btn" aria-label="全站搜索">🔍</button>
 </header>
 
 <div class="wrap">
-
   <section class="block">
-    <h2>🏛️ 学校综合</h2>
-    <p class="lead">学校权威信息从这里开始</p>
-    <div class="links">
-      <a class="link-card" href="https://www.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">🏛️</span>
-        <span><span class="t">学校官网</span><br><span class="d">www.ahut.edu.cn · 学校要闻、校务通知、公告公示</span></span>
-      </a>
-      <a class="link-card" href="https://xwgk.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">📢</span>
-        <span><span class="t">信息公开网</span><br><span class="d">xwgk.ahut.edu.cn · 学校信息公开、招生信息、财务公开</span></span>
-      </a>
-      <a class="link-card" href="https://news.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">📰</span>
-        <span><span class="t">新闻中心</span><br><span class="d">news.ahut.edu.cn · 校园新闻、媒体关注、学术动态</span></span>
-      </a>
-      <a class="link-card" href="https://smart.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">💻</span>
-        <span><span class="t">智慧校园</span><br><span class="d">smart.ahut.edu.cn · 统一身份认证、校园服务一站式入口</span></span>
-      </a>
+    <h2>🎮 2048</h2>
+    <p class="lead">经典数字合成小游戏：滑动方块，合成 2048！</p>
+    <div class="game-wrap">
+      <iframe src="game-2048/index.html" title="2048 小游戏" loading="lazy" allowfullscreen></iframe>
     </div>
+    <div class="notice">🎯 玩法：<b>电脑</b>用方向键 / WASD 控制，<b>手机</b>直接滑动屏幕即可。达到 2048 即胜利，继续玩可以冲击更高分！<br>🏆 游戏内置<b>实时排行榜</b>（单机榜/对战榜/合并榜）：所有玩家的分数实时同步，点击游戏内"🏆 排行榜"按钮即可查看全球/全校排名！</div>
   </section>
-
-  <section class="block">
-    <h2>🎯 招生与升学</h2>
-    <p class="lead">从报考到读研，官方渠道在这里</p>
-    <div class="links">
-      <a class="link-card" href="https://zs.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">🎯</span>
-        <span><span class="t">本科招生网</span><br><span class="d">zs.ahut.edu.cn · 招生章程、录取查询、新生导航</span></span>
-      </a>
-      <a class="link-card" href="https://graduate.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">🎓</span>
-        <span><span class="t">研究生招生</span><br><span class="d">graduate.ahut.edu.cn · 硕士/博士招生信息、研究生院</span></span>
-      </a>
-      <a class="link-card" href="https://jxjy.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">📖</span>
-        <span><span class="t">继续教育学院</span><br><span class="d">jxjy.ahut.edu.cn · 成人教育、自考、培训项目</span></span>
-      </a>
-      <a class="link-card" href="https://mba.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">💼</span>
-        <span><span class="t">MBA教育中心</span><br><span class="d">mba.ahut.edu.cn · 工商管理硕士（MBA）招生与培养</span></span>
-      </a>
-    </div>
-  </section>
-
-  <section class="block">
-    <h2>📚 教学与学习</h2>
-    <p class="lead">选课、成绩、图书馆，学习离不开它们</p>
-    <div class="links">
-      <a class="link-card" href="https://jwc.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">📖</span>
-        <span><span class="t">教务处官网</span><br><span class="d">jwc.ahut.edu.cn · 选课、成绩、学籍、考试安排</span></span>
-      </a>
-      <a class="link-card" href="https://lib.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">📚</span>
-        <span><span class="t">图书馆</span><br><span class="d">lib.ahut.edu.cn · 馆藏检索、数据库、开馆时间</span></span>
-      </a>
-    </div>
-  </section>
-
-  <section class="block">
-    <h2>🎪 学生服务</h2>
-    <p class="lead">学生工作、社团活动、校友之家</p>
-    <div class="links">
-      <a class="link-card" href="https://xgb.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">🎓</span>
-        <span><span class="t">学生工作部(处)</span><br><span class="d">xgb.ahut.edu.cn · 奖助学金、心理健康、日常管理</span></span>
-      </a>
-      <a class="link-card" href="https://tw.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">⭐</span>
-        <span><span class="t">团委</span><br><span class="d">tw.ahut.edu.cn · 共青团工作、社团活动、社会实践</span></span>
-      </a>
-      <a class="link-card" href="https://xyh.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">🤝</span>
-        <span><span class="t">校友会</span><br><span class="d">xyh.ahut.edu.cn · 校友服务、校友活动、校友捐赠</span></span>
-      </a>
-    </div>
-  </section>
-
-  <section class="block">
-    <h2>🔬 科研与学术</h2>
-    <p class="lead">科研动态与学术成果</p>
-    <div class="links">
-      <a class="link-card" href="https://kyc.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">🔬</span>
-        <span><span class="t">科研院</span><br><span class="d">kyc.ahut.edu.cn · 科研项目、成果转化、科研平台</span></span>
-      </a>
-      <a class="link-card" href="https://xuebao.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">📄</span>
-        <span><span class="t">工大学报</span><br><span class="d">xuebao.ahut.edu.cn · 《安徽工业大学学报》自然科学版/社会科学版</span></span>
-      </a>
-    </div>
-  </section>
-
-  <section class="block">
-    <h2>🏢 办事服务</h2>
-    <p class="lead">行政办事、后勤保障常用入口</p>
-    <div class="links">
-      <a class="link-card" href="https://rlzyc.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">👤</span>
-        <span><span class="t">人力资源处</span><br><span class="d">rlzyc.ahut.edu.cn · 师资队伍、人才招聘、职称评聘</span></span>
-      </a>
-      <a class="link-card" href="https://cwc.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">💰</span>
-        <span><span class="t">财务处</span><br><span class="d">cwc.ahut.edu.cn · 学费缴纳、财务报销、收费公示</span></span>
-      </a>
-      <a class="link-card" href="https://xxh.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">🌐</span>
-        <span><span class="t">信息化处</span><br><span class="d">xxh.ahut.edu.cn · 校园网、信息化服务、账号管理</span></span>
-      </a>
-      <a class="link-card" href="https://hqjt.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">🏠</span>
-        <span><span class="t">后勤处</span><br><span class="d">hqjt.ahut.edu.cn · 后勤服务、物业维修、餐饮住宿保障</span></span>
-      </a>
-      <a class="link-card" href="https://bwc.ahut.edu.cn/" target="_blank" rel="noopener">
-        <span class="ico">🛡️</span>
-        <span><span class="t">保卫处</span><br><span class="d">bwc.ahut.edu.cn · 校园安全、户籍管理、安全保卫</span></span>
-      </a>
-    </div>
-  </section>
-
-  <div class="notice">📌 使用提示：以上链接均来自学校官网及组织机构页公开信息，2026年8月实测可访问。网址如遇调整，请以学校官网导航为准。</div>
-
-  <!-- 声明 -->
-  <div style="text-align:center;padding:20px 0;color:var(--muted);font-size:13px;">
-    ⚠️ 本网站由热心学长个人制作，非学校官方平台<br>
-    内容仅供参考，重要信息请以学校官方通知为准
-  </div>
 
 </div>
 

@@ -1,0 +1,2877 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>2048 🦐</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { height: 100%; }
+  body {
+    min-height: 100%;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    background: linear-gradient(-45deg, #0f172a, #1e293b, #111827, #0b1220);
+    background-size: 400% 400%;
+    animation: bgShift 18s ease infinite;
+    color: #e2e8f0;
+    display: block; padding: 16px;
+    -webkit-user-select: none; user-select: none;
+    overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.no-scroll { overflow: hidden; }
+  @keyframes bgShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  body::before, body::after {
+    content: ''; position: fixed; border-radius: 50%;
+    filter: blur(90px); opacity: .22; pointer-events: none; z-index: 0;
+  }
+  body::before { width: 440px; height: 440px; background: #f59e0b; top: -120px; right: -100px; animation: floatA 14s ease-in-out infinite; }
+  body::after  { width: 400px; height: 400px; background: #6366f1; bottom: -140px; left: -120px; animation: floatB 16s ease-in-out infinite; }
+  @keyframes floatA { 50% { transform: translate(-60px, 50px) scale(1.1); } }
+  @keyframes floatB { 50% { transform: translate(70px, -50px) scale(1.15); } }
+  #bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+
+  /* 移动端性能优化：禁用重 GPU 动画（背景位移/毛玻璃），优先保证滑动流畅 */
+  @media (max-width: 768px) {
+    body { animation: none; background: linear-gradient(160deg, #0f172a, #1e293b); }
+    body::before, body::after { animation: none; filter: blur(24px); opacity: .12; }
+    * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+    .tile, .tile.pop, .tile.merge-pop { will-change: transform; }
+  }
+
+  .container { width: 100%; max-width: 480px; position: relative; z-index: 1; margin: 0 auto; padding-bottom: 20px; }
+
+  header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; }
+  h1 {
+    font-size: 42px; font-weight: 800; letter-spacing: 3px;
+    background: linear-gradient(90deg, #fbbf24, #f97316);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 12px rgba(251,191,36,.25));
+  }
+  .sub { color: #94a3b8; font-size: 13px; margin-top: 2px; }
+  .top-right { display: flex; gap: 10px; align-items: center; }
+
+  .scores { display: flex; gap: 10px; }
+  .score-box {
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.09);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-radius: 12px; padding: 8px 14px; text-align: center; min-width: 78px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  }
+  .score-box .label { font-size: 11px; color: #94a3b8; letter-spacing: 1px; }
+  .score-box .value { font-size: 20px; font-weight: 700; }
+  .score-box .value.bump { animation: bump .25s ease; }
+  @keyframes bump { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+  .sound {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.09);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    font-size: 18px; cursor: pointer; color: #e2e8f0;
+    box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    transition: transform .15s;
+  }
+  .sound:active { transform: scale(.92); }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 4px; }
+  .btn-row button { flex: 1; }
+  button.new, button.pk {
+    padding: 12px; border: none; border-radius: 12px;
+    color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 3px;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+  }
+  button.new {
+    background: linear-gradient(90deg, #f59e0b, #ef4444);
+    box-shadow: 0 8px 24px rgba(245,158,11,.35);
+  }
+  button.new:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(245,158,11,.45); }
+  button.pk {
+    background: linear-gradient(90deg, #8b5cf6, #ec4899);
+    box-shadow: 0 8px 24px rgba(139,92,246,.35);
+  }
+  button.pk:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(139,92,246,.45); }
+  button:active { transform: scale(.98); }
+  button:disabled { opacity: .45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+  .board-wrap { position: relative; margin-top: 14px; }
+  .board {
+    position: relative; width: 100%; aspect-ratio: 1/1;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.09);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 10px;
+    padding: 10px;
+    touch-action: none;
+    box-shadow: 0 8px 40px rgba(0,0,0,.4);
+  }
+  .cell { background: rgba(255,255,255,.06); border-radius: 10px; }
+
+  .tile {
+    position: absolute; left: 0; top: 0; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800;
+    transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0);
+    transition: transform .12s ease;
+    will-change: transform;
+    z-index: 2;
+  }
+  .tile::before {
+    content: ''; position: absolute; inset: 0; border-radius: 10px;
+    background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 45%);
+    opacity: .5; pointer-events: none;
+  }
+  .tile-2::before, .tile-4::before { opacity: .2; }
+  .board.no-anim .tile { transition: none; }
+
+  .tile.pop { animation: pop .18s ease; }
+  @keyframes pop {
+    0% { transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0) scale(0); }
+    60% { transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0) scale(1.15); }
+    100% { transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0) scale(1); }
+  }
+  .tile.merge-pop { animation: mergePop .24s ease; }
+  @keyframes mergePop {
+    0%   { transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0) scale(.5); filter: brightness(1.9); }
+    45%  { transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0) scale(1.3); filter: brightness(1.35); }
+    100% { transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0) scale(1); filter: brightness(1); }
+  }
+
+  .tile-2    { background: #eee4da; color: #776e65; }
+  .tile-4    { background: #ede0c8; color: #776e65; }
+  .tile-8    { background: #f2b179; color: #f9f6f2; }
+  .tile-16   { background: #f59563; color: #f9f6f2; }
+  .tile-32   { background: #f67c5f; color: #f9f6f2; }
+  .tile-64   { background: #f65e3b; color: #f9f6f2; }
+  .tile-128  { background: #edcf72; color: #f9f6f2; box-shadow: 0 0 18px rgba(237,207,114,.45); }
+  .tile-256  { background: #edcc61; color: #f9f6f2; box-shadow: 0 0 18px rgba(237,204,97,.45); }
+  .tile-512  { background: #edc850; color: #f9f6f2; box-shadow: 0 0 18px rgba(237,200,80,.5); }
+  .tile-1024 { background: #edc53f; color: #f9f6f2; box-shadow: 0 0 22px rgba(237,197,63,.55); }
+  .tile-2048 { background: #edc22e; color: #f9f6f2; box-shadow: 0 0 28px rgba(237,194,46,.7); }
+  .tile-super{ background: #3c3a32; color: #f9f6f2; box-shadow: 0 0 28px rgba(255,255,255,.2); }
+
+  .float-score {
+    position: absolute; z-index: 10;
+    transform: translate(-50%, -50%);
+    font-size: 22px; font-weight: 800; color: #fbbf24;
+    text-shadow: 0 0 14px rgba(251,191,36,.85), 0 2px 6px rgba(0,0,0,.45);
+    pointer-events: none;
+    animation: floatUp .75s ease-out forwards;
+  }
+  @keyframes floatUp {
+    0%   { transform: translate(-50%, -50%) scale(.8); opacity: 0; }
+    15%  { opacity: 1; }
+    100% { transform: translate(-50%, -150%) scale(1.15); opacity: 0; }
+  }
+
+  .overlay {
+    position: absolute; inset: 0;
+    background: rgba(15,23,42,.75);
+    border-radius: 16px;
+    display: none;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 10px;
+    z-index: 5;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    text-align: center; padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .overlay h2 { font-size: 30px; }
+  .overlay p { color: #94a3b8; font-size: 14px; line-height: 1.7; }
+  .overlay .btns { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+  .overlay button {
+    padding: 10px 22px; border: none; border-radius: 10px;
+    background: linear-gradient(90deg, #f59e0b, #ef4444);
+    color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 6px 18px rgba(245,158,11,.35);
+  }
+  .overlay button.ghost { background: rgba(255,255,255,.15); box-shadow: none; }
+
+  .stats { display: flex; gap: 10px; margin-top: 14px; }
+  .stat-box {
+    flex: 1;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.09);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-radius: 12px; padding: 10px 12px; text-align: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  }
+  .stat-box .label { font-size: 11px; color: #94a3b8; letter-spacing: 1px; }
+  .stat-box .value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .progress-box { flex: 1.4; }
+  .progress-track {
+    height: 8px; border-radius: 4px; background: rgba(255,255,255,.1);
+    overflow: hidden; margin-top: 7px;
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #fbbf24, #f97316);
+    border-radius: 4px;
+    transition: width .3s ease;
+    box-shadow: 0 0 10px rgba(251,191,36,.6);
+  }
+  .progress-text { font-size: 11px; color: #fbbf24; margin-top: 4px; font-weight: 700; }
+
+  .history {
+    margin-top: 14px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.09);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px; padding: 14px 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.4);
+    max-height: 360px; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .history-title { font-size: 14px; font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; color: #fbbf24; }
+  .history-title small { font-weight: 400; color: #64748b; font-size: 11px; }
+  .history-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 13px; }
+  .history-row:last-child { border-bottom: none; }
+  .history-row .rank { width: 34px; text-align: center; font-size: 15px; }
+  .history-row .info { flex: 1; }
+  .history-row .time { color: #64748b; font-size: 12px; }
+  .history-row.top .info { color: #fbbf24; font-weight: 700; }
+  .history-empty { color: #94a3b8; font-size: 13px; text-align: center; padding: 10px 0; }
+
+  /* ============ PK ============ */
+  .pk-statusbar {
+    display: flex; gap: 12px; margin-top: 14px; align-items: stretch;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.09);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px; padding: 12px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.4);
+  }
+  .mini-board {
+    width: 104px; height: 104px; flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 3px; padding: 3px;
+    background: rgba(255,255,255,.06);
+    border-radius: 10px;
+  }
+  .mini-cell { border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+  .mini-info { flex: 1; display: flex; flex-direction: column; gap: 3px; justify-content: center; font-size: 12px; color: #cbd5e1; min-width: 0; }
+  .mini-info .row { display: flex; justify-content: space-between; gap: 6px; }
+  .mini-info .tag { color: #94a3b8; }
+  .me { color: #fbbf24; }
+  .opp { color: #22d3ee; }
+  .p1 { color: #fbbf24; }
+  .p2 { color: #22d3ee; }
+  .mini-info.right { text-align: right; }
+
+  .mini-2    { background: #eee4da; color: #776e65; }
+  .mini-4    { background: #ede0c8; color: #776e65; }
+  .mini-8    { background: #f2b179; color: #f9f6f2; }
+  .mini-16   { background: #f59563; color: #f9f6f2; }
+  .mini-32   { background: #f67c5f; color: #f9f6f2; }
+  .mini-64   { background: #f65e3b; color: #f9f6f2; }
+  .mini-128  { background: #edcf72; color: #f9f6f2; }
+  .mini-256  { background: #edcc61; color: #f9f6f2; }
+  .mini-512  { background: #edc850; color: #f9f6f2; }
+  .mini-1024 { background: #edc53f; color: #f9f6f2; }
+  .mini-2048 { background: #edc22e; color: #f9f6f2; }
+  .mini-super{ background: #3c3a32; color: #f9f6f2; }
+
+  .pk-myline {
+    margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    font-size: 13px; color: #cbd5e1;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 12px; padding: 8px 12px;
+  }
+  .pk-myline .mline-text { flex: 1; text-align: center; }
+  .pk-myline b { color: #fbbf24; }
+  .pk-hunt-line { margin-top: 8px; text-align: center; font-size: 13px; color: #f87171; font-weight: 700; }
+
+  .pk-quit {
+    width: 100%; margin-top: 10px; padding: 9px;
+    border-radius: 10px; border: 1px solid rgba(248,113,113,.35);
+    background: rgba(248,113,113,.08); color: #fca5a5;
+    font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: 2px;
+    transition: all .15s;
+  }
+  .pk-quit:hover { background: rgba(248,113,113,.18); }
+  .pk-quit.confirm { background: rgba(248,113,113,.9); color: #fff; border-color: transparent; }
+  .pk-quit.small { width: auto; margin: 0; padding: 5px 12px; font-size: 12px; letter-spacing: 1px; border-radius: 8px; }
+
+  .turn-badge {
+    width: 96px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; text-align: center; line-height: 1.4;
+    border-radius: 12px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    transition: all .25s;
+  }
+  .turn-badge.t1 { color: #fbbf24; border-color: rgba(251,191,36,.5); box-shadow: 0 0 16px rgba(251,191,36,.25); }
+  .turn-badge.t2 { color: #22d3ee; border-color: rgba(34,211,238,.5); box-shadow: 0 0 16px rgba(34,211,238,.25); }
+
+  /* ============ Modal ============ */
+  .modal {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(2,6,23,.8);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal.show { display: flex; }
+  .modal-card {
+    width: 100%; max-width: 420px;
+    background: rgba(30,41,59,.96);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 20px; padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    max-height: 85vh; overflow-y: auto;
+  }
+  .modal-card h2 { font-size: 22px; margin-bottom: 16px; text-align: center; }
+  .mode-btns { display: flex; gap: 10px; }
+  .mode-btn, .menu-btn {
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.06);
+    color: #e2e8f0; cursor: pointer;
+    border-radius: 14px; padding: 12px;
+    transition: all .15s;
+  }
+  .mode-btn { flex: 1; }
+  .mode-btn:hover, .menu-btn:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.25); }
+  .mode-btn .big { font-size: 20px; font-weight: 700; }
+  .mode-btn .small { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+  .menu-btn { width: 100%; margin-top: 10px; font-size: 15px; font-weight: 700; letter-spacing: 2px; }
+  .menu-btn.ghost { background: rgba(255,255,255,.08); color: #cbd5e1; }
+  .pk-rules {
+    margin-top: 14px; font-size: 12px; color: #94a3b8; line-height: 1.8;
+    background: rgba(255,255,255,.04); border-radius: 10px; padding: 10px 12px;
+  }
+  .pk-code-title { text-align: center; color: #94a3b8; font-size: 13px; margin-top: 6px; }
+  .pk-code {
+    font-size: 40px; letter-spacing: 10px; text-align: center;
+    color: #fbbf24; font-weight: 800; margin: 10px 0 4px;
+    text-shadow: 0 0 20px rgba(251,191,36,.4);
+  }
+  .pk-waiting { text-align: center; color: #94a3b8; font-size: 14px; margin: 8px 0; }
+  .code-input {
+    width: 100%; padding: 14px; text-align: center; font-size: 24px; letter-spacing: 10px;
+    border-radius: 12px; border: 1px solid rgba(255,255,255,.15);
+    background: rgba(255,255,255,.06); color: #fff; outline: none;
+    margin-top: 12px; text-transform: uppercase;
+  }
+  .code-input:focus { border-color: #fbbf24; }
+  .pk-err { color: #f87171; font-size: 13px; text-align: center; margin-top: 10px; min-height: 18px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .modal-actions button {
+    flex: 1; padding: 11px; border-radius: 12px; border: none;
+    background: rgba(255,255,255,.1); color: #cbd5e1; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .modal-actions button:hover { background: rgba(255,255,255,.18); }
+  /* 排行榜 */
+  .lb-btn { background: rgba(250,204,21,.15); border: 1px solid rgba(250,204,21,.3); color: #fbbf24; }
+  .lb-btn:hover { background: rgba(250,204,21,.25); border-color: rgba(250,204,21,.5); }
+  .username-row { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+  .username-row input { flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: #f1f5f9; font-size: 14px; outline: none; transition: border .2s; }
+  .username-row input:focus { border-color: #fbbf24; }
+  .username-row input::placeholder { color: #64748b; }
+  .username-row .name-save { padding: 10px 18px; border-radius: 10px; border: none; background: #fbbf24; color: #0f172a; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .pk-my-name { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #fbbf24; margin-right: 10px; cursor: pointer; }
+  .pk-my-name:hover { opacity: .8; }
+  .lb-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+  .lb-tab { flex: 1; padding: 8px 4px; border-radius: 10px; border: 1px solid #334155; background: rgba(255,255,255,.04); color: #94a3b8; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s; }
+  .lb-tab.active { background: rgba(56,189,248,.15); border-color: #38bdf8; color: #38bdf8; }
+  .lb-tab:active { transform: scale(.97); }
+  .lb-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .lb-table th { color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 8px 6px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .lb-table td { padding: 10px 6px; font-size: 14px; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,.04); }
+  .lb-table .lb-rank { width: 40px; font-weight: 800; color: #fbbf24; }
+  .lb-table .lb-score { width: 60px; text-align: right; font-weight: 700; }
+  .lb-table .lb-me td { background: rgba(250,204,21,.08); color: #fbbf24; font-weight: 700; }
+  .lb-table .lb-delta { font-size: 11px; margin-left: 4px; }
+  .lb-table .lb-delta.up { color: #4ade80; }
+  .lb-table .lb-delta.down { color: #f87171; }
+  .lb-empty { text-align: center; color: #64748b; padding: 30px 0; font-size: 14px; }
+  .lb-info { font-size: 11px; color: #64748b; margin-top: 4px; text-align: center; }
+  /* 胜负动画 */
+  .overlay.win { background: rgba(10,60,20,.82); }
+  .overlay.win h2 { animation: glowGold .8s ease-in-out infinite alternate; }
+  .overlay.lose { background: rgba(60,10,10,.82); animation: shake .5s ease-in-out; }
+  .overlay.draw { background: rgba(30,30,50,.82); }
+  @keyframes glowGold { from { text-shadow: 0 0 10px #fbbf24, 0 0 30px #f59e0b; } to { text-shadow: 0 0 20px #fbbf24, 0 0 60px #f59e0b; } }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(6px); } }
+  /* 粒子容器 */
+  .confetti-container { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 6; }
+  .confetti-piece { position: absolute; width: 10px; height: 10px; border-radius: 2px; animation: confettiFall 1.5s ease-out forwards; }
+  @keyframes confettiFall { 0% { transform: translateY(-40px) rotate(0deg); opacity: 1; } 100% { transform: translateY(500px) rotate(720deg); opacity: 0; } }
+  .lb-stats { display: flex; gap: 8px; margin-bottom: 8px; }
+  .lb-stat-box { flex: 1; background: rgba(255,255,255,.05); border-radius: 8px; padding: 6px 8px; text-align: center; }
+  .lb-stat-box .val { font-size: 18px; font-weight: 800; color: #fbbf24; }
+  .lb-stat-box .lbl { font-size: 10px; color: #64748b; }
+  /* 延迟提示 */
+  .lag-warn { display: none; margin-top: 6px; text-align: center; font-size: 12px; color: #fbbf24; animation: blink 1s ease-in-out infinite alternate; }
+  .lag-warn.show { display: block; }
+  .lag-warn .pk-quit.small { display: inline-block; margin-left: 8px; }
+  @keyframes blink { from { opacity: .5; } to { opacity: 1; } }
+  .online-surrender { width: 100%; margin-top: 10px; padding: 9px; border-radius: 10px; border: 1px solid rgba(251,191,36,.3); background: rgba(251,191,36,.08); color: #fbbf24; font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: 2px; transition: all .15s; }
+  .online-surrender:hover { background: rgba(251,191,36,.18); }
+  .online-surrender.confirm { background: rgba(248,113,113,.9); color: #fff; border-color: transparent; }
+  /* 对手棋盘（大图实时） */
+  .opp-view { background: rgba(34,211,238,.1); border: 1px solid rgba(34,211,238,.3); color: #22d3ee; }
+  .opp-view:hover { background: rgba(34,211,238,.2); }
+  .opp-card { max-width: 470px; }
+  .opp-live { display: inline-block; font-size: 11px; color: #4ade80; font-weight: 700; vertical-align: middle; animation: blink 1s ease-in-out infinite alternate; }
+  .opp-head { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: 12px; color: #94a3b8; margin: 10px 0 14px; }
+  .opp-head b { color: #fbbf24; }
+  .opp-board {
+    width: min(390px, 78vw); height: min(390px, 78vw); margin: 0 auto;
+    display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
+    gap: 8px; padding: 8px; border-radius: 14px;
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.09);
+    box-shadow: 0 8px 40px rgba(0,0,0,.4);
+  }
+  .opp-cell { background: rgba(255,255,255,.06); border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .opp-inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-weight: 800; font-size: 30px; }
+  .opp-inner.v2 { background: #eee4da; color: #776e65; }
+  .opp-inner.v4 { background: #ede0c8; color: #776e65; }
+  .opp-inner.v8 { background: #f2b179; color: #f9f6f2; }
+  .opp-inner.v16 { background: #f59563; color: #f9f6f2; }
+  .opp-inner.v32 { background: #f67c5f; color: #f9f6f2; }
+  .opp-inner.v64 { background: #f65e3b; color: #f9f6f2; }
+  .opp-inner.v128 { background: #edcf72; color: #f9f6f2; box-shadow: inset 0 0 14px rgba(237,207,114,.35); }
+  .opp-inner.v256 { background: #edcc61; color: #f9f6f2; box-shadow: inset 0 0 14px rgba(237,204,97,.35); }
+  .opp-inner.v512 { background: #edc850; color: #f9f6f2; box-shadow: inset 0 0 14px rgba(237,200,80,.4); }
+  .opp-inner.v1024 { background: #edc53f; color: #f9f6f2; box-shadow: inset 0 0 16px rgba(237,197,63,.45); }
+  .opp-inner.v2048 { background: #edc22e; color: #f9f6f2; box-shadow: 0 0 24px rgba(237,194,46,.6); }
+  .opp-inner.vsuper { background: #3c3a32; color: #f9f6f2; box-shadow: 0 0 24px rgba(255,255,255,.18); }
+  .opp-inner.pop { animation: pop .2s ease; }
+  /* 排行榜：我的排名条 + 全量滚动 */
+  .lb-me-bar { margin: 10px 0 2px; padding: 8px 12px; border-radius: 10px; background: rgba(250,204,21,.1); border: 1px solid rgba(250,204,21,.35); color: #fbbf24; font-size: 13px; text-align: center; font-weight: 700; }
+  .lb-scroll { max-height: min(45vh, 420px); overflow-y: auto; }
+  /* ============ 移动端适配 ============ */
+  @media (max-width: 420px) {
+    body { padding: 8px; }
+    h1 { font-size: 30px; letter-spacing: 1px; }
+    .sub { font-size: 11px; }
+    .board { gap: 6px; padding: 6px; border-radius: 12px; }
+    .scores { gap: 6px; }
+    .score-box { min-width: 60px; padding: 6px 10px; }
+    .score-box .value { font-size: 16px; }
+    .sound { width: 36px; height: 36px; border-radius: 10px; font-size: 16px; }
+    .btn-row button { font-size: 14px; padding: 10px 6px; letter-spacing: 1px; }
+    .stats { gap: 6px; }
+    .stat-box { padding: 6px 8px; }
+    .stat-box .value { font-size: 15px; }
+    .pk-statusbar { flex-direction: column; gap: 8px; padding: 8px; }
+    .mini-board { width: 72px; height: 72px; }
+    .pk-myline { font-size: 11px; padding: 6px 8px; gap: 6px; }
+    .pk-quit.small { padding: 4px 8px; font-size: 11px; }
+    .pk-my-name { font-size: 11px; }
+    .history { padding: 10px 12px; max-height: 280px; }
+    .history-row { font-size: 11px; gap: 4px; }
+    .history-row .rank { width: 28px; font-size: 13px; }
+    .history-row .time { font-size: 10px; }
+    .history-title { font-size: 13px; }
+    .modal-card { padding: 16px; border-radius: 16px; max-width: 100%; }
+    .modal-card h2 { font-size: 19px; }
+    .mode-btn .big { font-size: 16px; }
+    .pk-code { font-size: 28px; letter-spacing: 6px; }
+    .turn-badge { width: 72px; font-size: 12px; }
+    .overlay h2 { font-size: 24px; }
+    .overlay p { font-size: 12px; }
+    .overlay button { font-size: 13px; padding: 8px 16px; }
+    .tile { font-size: 18px; }
+    .tile-128 { font-size: 16px; }
+    .tile-256 { font-size: 16px; }
+    .tile-512 { font-size: 14px; }
+    .tile-1024 { font-size: 13px; }
+    .tile-2048 { font-size: 12px; }
+    .tile-super { font-size: 12px; }
+    .lb-table td { font-size: 12px; padding: 7px 4px; }
+    .lb-stats { gap: 4px; }
+    .lb-stat-box { padding: 4px 6px; }
+    .lb-stat-box .val { font-size: 15px; }
+    .lb-stat-box .lbl { font-size: 9px; }
+    .mode-btns { gap: 6px; }
+    .mini-info { font-size: 10px; }
+  }
+  @media (max-width: 360px) {
+    body { padding: 6px; }
+    h1 { font-size: 26px; }
+    .board { gap: 4px; padding: 4px; border-radius: 10px; }
+    .scores { gap: 4px; }
+    .score-box { min-width: 52px; padding: 4px 8px; }
+    .score-box .value { font-size: 14px; }
+    .score-box .label { font-size: 10px; }
+    .btn-row { gap: 6px; }
+    .btn-row button { font-size: 13px; padding: 8px 4px; letter-spacing: 0; }
+    .stat-box { padding: 4px 6px; }
+    .stat-box .value { font-size: 13px; }
+    .tile { font-size: 16px; }
+    .tile-128, .tile-256 { font-size: 14px; }
+    .tile-512, .tile-1024 { font-size: 12px; }
+    .tile-2048, .tile-super { font-size: 10px; }
+    .pk-code { font-size: 24px; letter-spacing: 4px; }
+    .mode-btn .big { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>2048</h1>
+      <div class="sub">合并数字，冲向 2048 🦐</div>
+    </div>
+    <div class="top-right">
+      <div class="scores">
+        <div class="score-box"><div class="label">得分</div><div class="value" id="score">0</div></div>
+        <div class="score-box"><div class="label">最高</div><div class="value" id="best">0</div></div>
+      </div>
+      <button class="sound" id="btn-sound" title="音效开关">🔊</button>
+    </div>
+  </header>
+
+  <div class="btn-row">
+    <button class="new" id="btn-new">新 游 戏</button>
+    <button class="pk" id="btn-pk">⚔️ PK 对战</button>
+    <button class="pk lb-btn" id="btn-lb">🏆 排行榜</button>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+    <div class="overlay" id="overlay">
+      <h2 id="overlay-title"></h2>
+      <p id="overlay-sub"></p>
+      <div class="btns" id="overlay-btns"></div>
+    </div>
+  </div>
+
+  <!-- PK 对战区域 -->
+  <div id="pk-bar" style="display:none;">
+    <div class="pk-statusbar" id="online-bar" style="display:none;">
+      <div class="mini-board" id="mini-board"></div>
+      <div class="mini-info">
+        <div class="row"><span class="tag">👤 对手</span><span class="opp" id="opp-state">连接中</span></div>
+        <div class="row"><span class="tag">用时</span><span class="opp" id="opp-time">00:00</span></div>
+        <div class="row"><span class="tag">步数</span><span id="opp-moves">0</span></div>
+        <div class="row"><span class="tag">得分</span><span id="opp-score">0</span></div>
+        <div class="row"><span class="tag">延迟</span><span id="opp-ping">—</span></div>
+      </div>
+    </div>
+    <div class="pk-myline" id="pk-myline" style="display:none;">
+      <span class="mline-text"><span class="pk-my-name" id="pk-my-name" title="点击修改昵称">🦐 </span>用时 <b id="pk-my-time">00:00</b> · 步数 <b id="pk-my-moves">0</b></span>
+      <button class="pk-quit small opp-view" id="btn-opp-view" style="display:none;">👁 对手棋盘</button>
+      <button class="pk-quit small" id="btn-quit-online">退出</button>
+    </div>
+    <div class="pk-hunt-line" id="pk-hunt-line" style="display:none;"><span id="pk-hunt"></span></div>
+    <button class="online-surrender" id="btn-online-sur" style="display:none;">🏳️ 认输</button>
+    <div class="lag-warn" id="lag-warn">⚠️ 对手网络延迟，请耐心等待…</div>
+    <div class="lag-warn" id="reconnect-warn"><span id="reconnect-text">⚠️ 连接中断，正在重连…</span><button class="pk-quit small" id="btn-reconnect-quit">放弃对局</button></div>
+
+    <div class="pk-statusbar" id="local-bar" style="display:none;">
+      <div class="mini-info">
+        <div class="row"><span class="tag p1">🟡 玩家1</span><span class="p1" id="p1-time">00:00</span></div>
+        <div class="row"><span class="tag">步数</span><span id="p1-moves">0</span></div>
+        <div class="row"><span class="tag">得分</span><span id="p1-score">0</span></div>
+      </div>
+      <div class="turn-badge" id="turn-badge">轮到<br>玩家1</div>
+      <div class="mini-info right">
+        <div class="row"><span class="tag p2">🟢 玩家2</span><span class="p2" id="p2-time">00:00</span></div>
+        <div class="row"><span class="tag">步数</span><span id="p2-moves">0</span></div>
+        <div class="row"><span class="tag">得分</span><span id="p2-score">0</span></div>
+      </div>
+    </div>
+    <button class="pk-quit" id="btn-surrender" style="display:none;">🏳️ 认输（轮到谁谁认）</button>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat-box"><div class="label">步数</div><div class="value" id="moves">0</div></div>
+    <div class="stat-box"><div class="label">最大方块</div><div class="value" id="maxTile">0</div></div>
+    <div class="stat-box progress-box">
+      <div class="label">目标进度</div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText">0%</div>
+    </div>
+  </div>
+
+  <div class="history" id="history">
+    <div class="history-title">🏆 单人排行榜 <small>按分数排序</small></div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<!-- PK 弹窗 -->
+<div class="modal" id="pk-modal">
+  <div class="modal-card">
+    <h2>⚔️ PK 对战</h2>
+    <div id="pk-modal-body"></div>
+    <div class="modal-actions">
+      <button id="pk-close">关 闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 对手棋盘（大图实时） -->
+<div class="modal" id="pk-opp-modal">
+  <div class="modal-card opp-card">
+    <h2>👁 对手棋盘 <span class="opp-live">● 实时</span></h2>
+    <div class="opp-head">
+      <span id="opp2-state">对战中</span>
+      <span>得分 <b id="opp2-score">0</b></span>
+      <span>步数 <b id="opp2-moves">0</b></span>
+      <span>用时 <b id="opp2-time">00:00</b></span>
+      <span>延迟 <b id="opp2-ping">—</b></span>
+    </div>
+    <div class="opp-board" id="pk-opp-board"></div>
+    <div class="modal-actions">
+      <button id="pk-opp-close">关 闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// PeerJS 多 CDN 加载器（jsdelivr → unpkg → cdnjs），保证不同网络环境下都能加载联机组件
+(function () {
+  var CDNS = [
+    'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js',
+    'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js',
+    'https://fastly.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js'
+  ];
+  var i = 0;
+  function load() {
+    if (i >= CDNS.length) { window.__peerStatus = 'fail'; return; }
+    var s = document.createElement('script');
+    s.src = CDNS[i++];
+    s.onload = function () { if (window.Peer) window.__peerStatus = 'ok'; else load(); };
+    s.onerror = load;
+    document.head.appendChild(s);
+  }
+  window.__peerStatus = 'loading';
+  load();
+  setTimeout(function () { if (!window.Peer && window.__peerStatus !== 'fail') window.__peerStatus = 'fail'; }, 10000);
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  var SIZE = 4;
+  var GAP = 10, PAD = 10;
+  var boardEl = document.getElementById('board');
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlay-title');
+  var overlaySub = document.getElementById('overlay-sub');
+  var overlayBtns = document.getElementById('overlay-btns');
+  var scoreEl = document.getElementById('score');
+  var bestEl = document.getElementById('best');
+  var movesEl = document.getElementById('moves');
+  var maxTileEl = document.getElementById('maxTile');
+  var progressFill = document.getElementById('progressFill');
+  var progressText = document.getElementById('progressText');
+  var historyList = document.getElementById('history-list');
+  var statsEl = document.getElementById('stats');
+  var historyEl = document.getElementById('history');
+  var pkBar = document.getElementById('pk-bar');
+  var onlineBar = document.getElementById('online-bar');
+  var localBar = document.getElementById('local-bar');
+  var pkMyline = document.getElementById('pk-myline');
+  var btnNew = document.getElementById('btn-new');
+  var btnPk = document.getElementById('btn-pk');
+  var btnLb = document.getElementById('btn-lb');
+  var pkModal = document.getElementById('pk-modal');
+  var pkModalBody = document.getElementById('pk-modal-body');
+
+  /* ================= 音效（Web Audio 合成，无外部文件） ================= */
+  var AudioFX = {
+    enabled: localStorage.getItem('shami-2048-sound') !== '0',
+    _ctx: null,
+    unlock: function () {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!this._ctx && AC) this._ctx = new AC();
+      if (this._ctx && this._ctx.state === 'suspended') this._ctx.resume();
+    },
+    _tone: function (freq, dur, type, vol, when, slide) {
+      if (!this.enabled) return;
+      this.unlock();
+      var c = this._ctx;
+      if (!c) return;
+      var t0 = c.currentTime + (when || 0);
+      var osc = c.createOscillator();
+      var g = c.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      if (slide) osc.frequency.exponentialRampToValueAtTime(slide, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(t0); osc.stop(t0 + dur + 0.05);
+    },
+    move: function () {
+      this._tone(200, 0.06, 'triangle', 0.05);
+      this._tone(310, 0.05, 'sine', 0.025, 0.01);
+    },
+    merge: function (v) {
+      var f = 320 + 38 * Math.log2(v);
+      this._tone(f, 0.13, 'sine', 0.13, 0, f * 1.5);
+      this._tone(f * 1.5, 0.16, 'triangle', 0.07, 0.05);
+    },
+    win: function () {
+      [523, 659, 784, 1047].forEach(function (f, i) { this._tone(f, 0.2, 'sine', 0.11, i * 0.13); }, this);
+    },
+    lose: function () {
+      [392, 311, 233, 155].forEach(function (f, i) { this._tone(f, 0.22, 'sine', 0.1, i * 0.15); }, this);
+    },
+    newGame: function () {
+      this._tone(523, 0.08, 'triangle', 0.08);
+      this._tone(784, 0.1, 'triangle', 0.08, 0.07);
+    },
+    join: function () { // 好友加入 / 重连成功
+      this._tone(440, 0.1, 'sine', 0.1);
+      this._tone(660, 0.14, 'sine', 0.08, 0.1);
+    },
+    hunt: function () { // 对手达成 2048，进入追赶倒计时
+      this._tone(880, 0.16, 'square', 0.05);
+      this._tone(880, 0.16, 'square', 0.05, 0.2);
+    }
+  };
+
+  var btnSound = document.getElementById('btn-sound');
+  function syncSound() { btnSound.textContent = AudioFX.enabled ? '🔊' : '🔇'; }
+  btnSound.addEventListener('click', function () {
+    AudioFX.enabled = !AudioFX.enabled;
+    localStorage.setItem('shami-2048-sound', AudioFX.enabled ? '1' : '0');
+    syncSound();
+    if (AudioFX.enabled) AudioFX.newGame();
+  });
+  syncSound();
+  function unlockAudio() {
+    AudioFX.unlock();
+    document.removeEventListener('pointerdown', unlockAudio);
+    document.removeEventListener('keydown', unlockAudio);
+  }
+  document.addEventListener('pointerdown', unlockAudio);
+  document.addEventListener('keydown', unlockAudio);
+
+  /* ================= 动态粒子背景 ================= */
+  var bg = document.getElementById('bg');
+  var bctx = bg.getContext('2d');
+  var parts = [];
+  var mouse = { x: -9999, y: -9999 };
+  var COLORS = ['rgba(251,191,36,', 'rgba(249,115,22,', 'rgba(255,255,255,', 'rgba(96,165,250,', 'rgba(52,211,153,'];
+
+  function resizeBg() { bg.width = window.innerWidth; bg.height = window.innerHeight; }
+  window.addEventListener('resize', resizeBg);
+  resizeBg();
+
+  function spawn(anywhere) {
+    return {
+      x: Math.random() * bg.width,
+      y: anywhere ? Math.random() * bg.height : bg.height + 12,
+      r: 1 + Math.random() * 2.6,
+      speed: 0.15 + Math.random() * 0.5,
+      sway: Math.random() * Math.PI * 2,
+      swaySpeed: 0.003 + Math.random() * 0.008,
+      alpha: 0.15 + Math.random() * 0.5,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)]
+    };
+  }
+  for (var pi = 0; pi < 46; pi++) parts.push(spawn(true));
+
+  function tick() {
+    bctx.clearRect(0, 0, bg.width, bg.height);
+    var mdx = (mouse.x - bg.width / 2) * 0.008;
+    var mdy = (mouse.y - bg.height / 2) * 0.012;
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      p.y -= p.speed;
+      p.sway += p.swaySpeed;
+      if (p.y < -24) { parts[i] = spawn(false); continue; }
+      var px = p.x + Math.sin(p.sway) * 18 + mdx;
+      var py = p.y + mdy;
+      var a = p.alpha * (0.6 + 0.4 * Math.sin(p.sway * 1.7));
+      var g = bctx.createRadialGradient(px, py, 0, px, py, p.r * 4);
+      g.addColorStop(0, p.color + (a * 0.9) + ')');
+      g.addColorStop(1, p.color + '0)');
+      bctx.fillStyle = g;
+      bctx.beginPath();
+      bctx.arc(px, py, p.r * 4, 0, Math.PI * 2);
+      bctx.fill();
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
+  document.addEventListener('mousemove', function (e) {
+    mouse.x = e.clientX; mouse.y = e.clientY;
+  });
+
+  /* ================= 游戏本体 ================= */
+  var rng = Math.random; // 单机随机源；PK 对战用共享种子
+  var board = [], tiles = [], idSeq = 1;
+  var score = 0, best = +(localStorage.getItem('shami-2048-best') || 0);
+  var over = false, won = false, busy = false;
+  var moveSeq = 0; // 用于让新游戏作废掉进行中的动画回调
+  var moves = 0, savedThisGame = false;
+  var soloTime = 0, soloTimer = null; // 单人游戏计时
+  var history = [];
+  try { history = JSON.parse(localStorage.getItem('shami-2048-history') || '[]') || []; } catch (e) { history = []; }
+
+  for (var i = 0; i < SIZE * SIZE; i++) {
+    var c = document.createElement('div');
+    c.className = 'cell';
+    boardEl.appendChild(c);
+  }
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function emptyBoard() {
+    var b = [];
+    for (var r = 0; r < SIZE; r++) { b.push([]); for (var c = 0; c < SIZE; c++) b[r].push(null); }
+    return b;
+  }
+
+  function clearTiles() {
+    var els = boardEl.querySelectorAll('.tile, .float-score');
+    for (var i = 0; i < els.length; i++) els[i].remove();
+  }
+
+  function cellSize() {
+    return (boardEl.clientWidth - PAD * 2 - GAP * (SIZE - 1)) / SIZE;
+  }
+  function pos(r, c) {
+    var cs = cellSize();
+    return { left: PAD + c * (cs + GAP), top: PAD + r * (cs + GAP), cs: cs };
+  }
+
+  function renderTile(t, pop, merge) {
+    var el = t.el;
+    var p = pos(t.row, t.col);
+    el.className = 'tile';
+    el.style.width = p.cs + 'px';
+    el.style.height = p.cs + 'px';
+    el.style.setProperty('--tx', p.left + 'px');
+    el.style.setProperty('--ty', p.top + 'px');
+    el.textContent = t.value;
+    el.style.fontSize = t.value < 100 ? '34px' : (t.value < 1000 ? '28px' : '22px');
+    el.classList.add(t.value <= 2048 ? 'tile-' + t.value : 'tile-super');
+    if (pop) {
+      var anim = merge ? 'merge-pop' : 'pop';
+      el.classList.add(anim);
+      el.addEventListener('animationend', function () { el.classList.remove(anim); }, { once: true });
+    }
+  }
+
+  function makeTile(value, r, c, pop) {
+    var t = { id: idSeq++, row: r, col: c, value: value };
+    t.el = document.createElement('div');
+    boardEl.appendChild(t.el);
+    renderTile(t, pop, false);
+    return t;
+  }
+
+  function addRandomTile() {
+    var empty = [];
+    for (var r = 0; r < SIZE; r++)
+      for (var cc = 0; cc < SIZE; cc++)
+        if (!board[r][cc]) empty.push([r, cc]);
+    if (!empty.length) return;
+    var pick = empty[Math.floor(rng() * empty.length)];
+    var value = rng() < 0.9 ? 2 : 4;
+    var t = makeTile(value, pick[0], pick[1], true);
+    board[pick[0]][pick[1]] = t;
+    tiles.push(t);
+  }
+
+  function animateTo(t, r, c) {
+    var p = pos(r, c);
+    t.el.style.setProperty('--tx', p.left + 'px');
+    t.el.style.setProperty('--ty', p.top + 'px');
+  }
+
+  function updateScore() {
+    scoreEl.textContent = score;
+    if (score > best) {
+      best = score;
+      localStorage.setItem('shami-2048-best', best);
+    }
+    bestEl.textContent = best;
+    scoreEl.classList.remove('bump');
+    void scoreEl.offsetWidth;
+    scoreEl.classList.add('bump');
+  }
+
+  function floatScore(r, c, val) {
+    var p = pos(r, c);
+    var el = document.createElement('div');
+    el.className = 'float-score';
+    el.textContent = '+' + val;
+    el.style.left = (p.left + p.cs / 2) + 'px';
+    el.style.top = (p.top + p.cs / 2) + 'px';
+    boardEl.appendChild(el);
+    setTimeout(function () { el.remove(); }, 800);
+  }
+
+  function range(start, end, step) {
+    var a = [];
+    for (var i = start; i !== end; i += step) a.push(i);
+    return a;
+  }
+
+  var DIRS = {
+    up:    { dr: -1, dc: 0 },
+    down:  { dr: 1,  dc: 0 },
+    left:  { dr: 0,  dc: -1 },
+    right: { dr: 0,  dc: 1 }
+  };
+
+  function move(dir) {
+    if (busy || over) return;
+    if (pkMode && (!pkGo || pkMyFinished)) return;
+    var v = DIRS[dir];
+    var rowOrder = v.dr === 1 ? range(SIZE - 1, -1, -1) : range(0, SIZE, 1);
+    var colOrder = v.dc === 1 ? range(SIZE - 1, -1, -1) : range(0, SIZE, 1);
+    var moved = false;
+    var merged = [];
+    var mergedIds = {};
+    var maxMerged = 0;
+
+    for (var ri = 0; ri < rowOrder.length; ri++) {
+      for (var ci = 0; ci < colOrder.length; ci++) {
+        var r = rowOrder[ri], c = colOrder[ci];
+        var t = board[r][c];
+        if (!t) continue;
+
+        var nr = r, nc = c;
+        while (true) {
+          var tr = nr + v.dr, tc = nc + v.dc;
+          if (tr < 0 || tr >= SIZE || tc < 0 || tc >= SIZE) break;
+          if (board[tr][tc]) break;
+          nr = tr; nc = tc;
+        }
+
+        var mr = nr + v.dr, mc = nc + v.dc;
+        var didMerge = false;
+        if (mr >= 0 && mr < SIZE && mc >= 0 && mc < SIZE) {
+          var target = board[mr][mc];
+          if (target && target.value === t.value && !mergedIds[target.id]) {
+            mergedIds[target.id] = true;
+            merged.push({ row: target.row, col: target.col, value: target.value * 2, a: t, b: target });
+            board[r][c] = null;
+            score += target.value * 2;
+            if (pkMode === 'local') localScores[localTurn - 1] += target.value * 2;
+            if (target.value * 2 > maxMerged) maxMerged = target.value * 2;
+            if (target.value * 2 > gameMaxMerge) gameMaxMerge = target.value * 2;
+            animateTo(t, target.row, target.col);
+            moved = true;
+            didMerge = true;
+          }
+        }
+        if (!didMerge && (nr !== r || nc !== c)) {
+          animateTo(t, nr, nc);
+          board[r][c] = null;
+          board[nr][nc] = t;
+          t.row = nr; t.col = nc;
+          moved = true;
+        }
+      }
+    }
+
+    if (!moved) return;
+    moves++;
+    movesEl.textContent = moves;
+    if (merged.length) AudioFX.merge(maxMerged); else AudioFX.move();
+    busy = true;
+    updateScore();
+
+    // PK 数据（步数先记，棋盘状态在下方动画完成后发送，保证对手拿到完整棋盘）
+    if (pkMode === 'online') {
+      pkMyMoves++;
+      document.getElementById('pk-my-moves').textContent = pkMyMoves;
+    } else if (pkMode === 'local') {
+      localMoves[localTurn - 1]++;
+      updLocal();
+    }
+
+    var seq = ++moveSeq;
+    setTimeout(function () {
+      if (seq !== moveSeq) return; // 已经开了新游戏，作废
+      for (var i = 0; i < merged.length; i++) {
+        var m = merged[i];
+        m.a.el.remove();
+        tiles = tiles.filter(function (x) { return x !== m.a; });
+        m.b.value = m.value;
+        renderTile(m.b, true, true); // 合成缩放特效
+        floatScore(m.row, m.col, m.value);
+      }
+      addRandomTile();
+      updateMaxTile();
+      if (pkMode === 'online') send({ t: 'move', grid: gridValues(), score: score, moves: pkMyMoves }); // 完整最新棋盘（含合并结果与新方块）
+      if (pkMode) pkCheckEnd(); else checkState();
+      busy = false;
+    }, 130);
+  }
+
+  function canMove() {
+    for (var r = 0; r < SIZE; r++)
+      for (var c = 0; c < SIZE; c++) {
+        var t = board[r][c];
+        if (!t) return true;
+        if (c + 1 < SIZE && board[r][c + 1] && board[r][c + 1].value === t.value) return true;
+        if (r + 1 < SIZE && board[r + 1][c] && board[r + 1][c].value === t.value) return true;
+      }
+    return false;
+  }
+
+  function showOverlay(title, sub, buttons) {
+    overlay.classList.remove('win', 'lose', 'draw'); // 清掉胜负动画残留
+    overlayTitle.textContent = title;
+    overlaySub.innerHTML = sub;
+    overlayBtns.innerHTML = '';
+    buttons.forEach(function (b) {
+      var btn = document.createElement('button');
+      if (b.ghost) btn.className = 'ghost';
+      btn.textContent = b.label;
+      btn.onclick = b.action;
+      overlayBtns.appendChild(btn);
+    });
+    overlay.classList.add('show');
+  }
+
+  function checkState() {
+    var maxV = 0;
+    for (var i = 0; i < tiles.length; i++) if (tiles[i].value > maxV) maxV = tiles[i].value;
+
+    if (!won && maxV >= 2048) {
+      won = true;
+      AudioFX.win();
+      setTimeout(function () {
+        showOverlay('达成 2048！🎉', '太强了，要继续冲更高吗？', [
+          { label: '继续挑战', ghost: true, action: function () { document.body.classList.remove('no-scroll'); overlay.classList.remove('show'); } },
+          { label: '再来一局', action: newGame }
+        ]);
+      }, 260);
+      return;
+    }
+    if (!canMove()) {
+      over = true;
+      saveOnce();
+      mergeReport();
+      AudioFX.lose();
+      setTimeout(function () {
+        showOverlay('游戏结束 💀', '最终得分：' + score + (score >= best ? '　🏆 新纪录！' : ''), [
+          { label: '再来一局', action: newGame }
+        ]);
+      }, 260);
+    }
+  }
+
+  function maxOnBoard() {
+    var max = 0;
+    for (var i = 0; i < tiles.length; i++) if (tiles[i].value > max) max = tiles[i].value;
+    return max;
+  }
+
+  function updateMaxTile() {
+    var max = maxOnBoard();
+    maxTileEl.textContent = max;
+    var pct = max <= 1 ? 0 : Math.min(Math.round(Math.log2(max) / 11 * 100), 100);
+    progressFill.style.width = pct + '%';
+    progressText.textContent = pct + '%';
+  }
+
+  function fmtTime(ts) {
+    var d = new Date(ts);
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return (d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function saveOnce() {
+    if (pkMode) return; // PK/联机对局不计入单人战绩
+    if (savedThisGame || (moves === 0 && score === 0)) return;
+    savedThisGame = true;
+    // 停止计时
+    if (soloTimer) { clearInterval(soloTimer); soloTimer = null; }
+    var record = { s: score, m: maxOnBoard(), t: Date.now(), time: soloTime };
+    // 更新最近战绩（保持最新8条）
+    history.unshift(record);
+    if (history.length > 8) history.length = 8;
+    try { localStorage.setItem('shami-2048-history', JSON.stringify(history)); } catch (e) {}
+    // 更新单人排行榜（按分数排序，保留前20）
+    var soloLb = [];
+    try { soloLb = JSON.parse(localStorage.getItem('shami2048-solo-lb') || '[]'); } catch (e) { soloLb = []; }
+    soloLb.push(record);
+    soloLb.sort(function (a, b) { return b.s - a.s; });
+    if (soloLb.length > 20) soloLb.length = 20;
+    try { localStorage.setItem('shami2048-solo-lb', JSON.stringify(soloLb)); } catch (e) {}
+    // 同步到服务端
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', SERVER_URL + '/api/lb-solo', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify({ name: getUserName(), s: score, m: maxOnBoard(), time: soloTime, steps: moves, at: record.t }));
+    } catch (e) {}
+    renderHistory();
+  }
+
+  function renderHistory() {
+    // 尝试从服务端拉取
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', SERVER_URL + '/api/lb-solo', true);
+      xhr.onload = function () {
+        var lb = [];
+        if (xhr.status === 200) {
+          try { lb = JSON.parse(xhr.responseText); } catch (e) {}
+          try { localStorage.setItem('shami2048-solo-lb', JSON.stringify(lb)); } catch (e) {}
+        } else { try { lb = JSON.parse(localStorage.getItem('shami2048-solo-lb') || '[]'); } catch (e) {} }
+        renderLb(lb);
+      };
+      xhr.onerror = function () {
+        var lb = [];
+        try { lb = JSON.parse(localStorage.getItem('shami2048-solo-lb') || '[]'); } catch (e) {}
+        renderLb(lb);
+      };
+      xhr.send();
+    } catch (e) {
+      var lb = [];
+      try { lb = JSON.parse(localStorage.getItem('shami2048-solo-lb') || '[]'); } catch (e2) {}
+      renderLb(lb);
+    }
+    return;
+
+    function renderLb(lb) {
+    historyList.innerHTML = '';
+    if (!lb.length) {
+      var e = document.createElement('div');
+      e.className = 'history-empty';
+      e.textContent = '还没有战绩，来一局吧 🦐';
+      historyList.appendChild(e);
+      return;
+    }
+    var medals = ['🥇', '🥈', '🥉'];
+    for (var i = 0; i < lb.length; i++) {
+      var h = lb[i];
+      var row = document.createElement('div');
+      row.className = 'history-row' + (i < 3 ? ' top' : '');
+      var rank = document.createElement('span');
+      rank.className = 'rank';
+      rank.textContent = medals[i] || ('#' + (i + 1));
+      var info = document.createElement('span');
+      info.className = 'info';
+      info.textContent = (h.s || 0) + ' 分 · 最大 ' + (h.m || 0);
+      var time = document.createElement('span');
+      time.className = 'time';
+      time.textContent = '⏱ ' + fmtTime2(h.time || 0) + ' · ' + fmtTime(h.t);
+      row.appendChild(rank); row.appendChild(info); row.appendChild(time);
+      historyList.appendChild(row);
+    }
+    // 底部统计
+    var stats = document.createElement('div');
+    stats.style.cssText = 'text-align:center;color:#64748b;font-size:11px;padding:6px 0;';
+    var avgScore = Math.round(lb.reduce(function(s,e){return s+e.s;},0) / lb.length);
+    var bestTime = Infinity, bestIdx = 0;
+    lb.forEach(function(e, i) { if (e.time < bestTime) { bestTime = e.time; bestIdx = i; } });
+    stats.textContent = '共 ' + lb.length + ' 局 · 均分 ' + avgScore + ' · 最快 ' + fmtTime2(bestTime);
+    historyList.appendChild(stats);
+    } // end renderLb
+  }
+
+  function newGame() {
+    saveOnce();
+    mergeReport(); // 开始新游戏也记录合成榜：未等结束就重开，上一局成绩照常累计
+    moveSeq++;
+    document.body.classList.remove('no-scroll');
+    clearTiles();
+    board = emptyBoard();
+    tiles = [];
+    score = 0; moves = 0; savedThisGame = false;
+    gameMaxMerge = 0; mergeSent = false;
+    soloTime = 0; if (soloTimer) { clearInterval(soloTimer); soloTimer = null; }
+    if (!pkMode) { soloTimer = setInterval(function () { soloTime++; }, 1000); }
+    over = false; won = false; busy = false;
+    rng = Math.random;
+    overlay.classList.remove('show');
+    updateScore();
+    movesEl.textContent = '0';
+    addRandomTile();
+    addRandomTile();
+    updateMaxTile();
+    AudioFX.newGame();
+  }
+  window.newGame = newGame; // 兜底暴露
+  btnNew.addEventListener('click', newGame);
+
+  /* ================= 排行榜系统 ================= */
+  var userName = localStorage.getItem('shami2048-username') || '';
+  var leaderboard = (function () {
+    try { return JSON.parse(localStorage.getItem('shami2048-leaderboard') || '[]'); }
+    catch (e) { return []; }
+  })();
+  // 累计合成分数榜（显示：最大合成数 + 总分数）
+  var mergeboard = (function () {
+    try { return JSON.parse(localStorage.getItem('shami2048-mergeboard') || '[]'); }
+    catch (e) { return []; }
+  })();
+  var gameMaxMerge = 0;  // 本局最大合成数（单局追踪）
+  var mergeSent = false; // 本局合成数据已上报标志
+  // 服务端 API 地址：网页被 Nginx/托管服务同域托管时自动用同源地址；本地 file:// 打开则不连排行榜
+  var SERVER_URL = 'https://fingal-2048.netlify.app'; // 指向原站排行榜 API（CORS 开放），实现所有用户实时记录
+
+  /* ---- SSE 实时排名推送 ---- */
+  var sseConn;
+  var sseFailCount = 0;   // SSE 连续失败次数（代理环境不支持长连接时自动降级轮询）
+  var lbPollTimer = null; // 轮询定时器
+  function initSSE() {
+    if (sseConn) { sseConn.close(); }
+    if (!SERVER_URL) return; // 未配置后端则不连
+    try {
+      sseConn = new EventSource(SERVER_URL + '/api/stream');
+      sseConn.addEventListener('connected', function () {
+        btnLb.innerHTML = '🏆 排行榜 <span style="font-size:10px;color:#4ade80;">● 实时</span>';
+      });
+      sseConn.addEventListener('leaderboard', function (e) {
+        try {
+          var d = JSON.parse(e.data);
+          if (d.leaderboard) { leaderboard = d.leaderboard; saveLB(); sseFailCount = 0; }
+          // 无缝更新弹窗内容（不重建整个 overlay）
+          var tbl = document.querySelector('#lb-table-body');
+          if (tbl) {
+            var list = lbMerged();
+            tbl.innerHTML = lbBuildRowsHtml(list);
+            lbRefreshStats(list);
+          }
+        } catch (x) {}
+      });
+      sseConn.addEventListener('mergeboard', function (e) {
+        try {
+          var d = JSON.parse(e.data);
+          if (d.leaderboard) { mergeboard = d.leaderboard; localStorage.setItem('shami2048-mergeboard', JSON.stringify(mergeboard)); }
+          mbRenderPanel();
+        } catch (x) {}
+      });
+      sseConn.addEventListener('soloboard', function (e) {
+        try {
+          var d = JSON.parse(e.data);
+          if (d.leaderboard) {
+            try { localStorage.setItem('shami2048-solo-lb', JSON.stringify(d.leaderboard)); } catch (xx) {}
+          }
+          // 实时刷新单人榜
+          renderHistory();
+        } catch (x) {}
+      });
+      sseConn.addEventListener('heartbeat', function () {});
+      sseConn.onerror = function () {
+        sseFailCount++;
+        console.log('[SSE] 连接断开(' + sseFailCount + ')，5秒后重连...');
+        if (sseFailCount >= 3) {
+          // 代理环境不支持 SSE 长连接（如 Netlify 代理模式），切换为轮询刷新
+          try { sseConn.close(); } catch (e) {}
+          sseConn = null;
+          startLbPoll();
+          return;
+        }
+        setTimeout(function () { initSSE(); }, 5000);
+      };
+    } catch (e) {}
+  }
+
+  /* ---- 排行榜轮询兕底（SSE 不可用时自动启用，Netlify 代理环境）---- */
+  function lbPollOnce() {
+    if (!SERVER_URL) return;
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', SERVER_URL + '/api/lb-pk', true);
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          try { leaderboard = JSON.parse(xhr.responseText); saveLB(); } catch (e) {}
+        }
+        // 排行榜弹窗开着时无缝刷新
+        var tbl = document.querySelector('#lb-table-body');
+        if (tbl) {
+          var list = lbMerged();
+          tbl.innerHTML = lbBuildRowsHtml(list);
+          lbRefreshStats(list);
+        }
+      };
+      xhr.onerror = function () {};
+      xhr.send();
+      // 合成榜同步刷新（面板打开时）
+      if (document.querySelector('#mb-table-body')) { mbFetch(mbRenderPanel); }
+    } catch (e) {}
+  }
+  function startLbPoll() {
+    if (lbPollTimer) return;
+    lbPollTimer = setInterval(lbPollOnce, 10000); // 每 10 秒自动刷新
+  }
+  initSSE();
+
+  function saveLB() { localStorage.setItem('shami2048-leaderboard', JSON.stringify(leaderboard)); }
+  function lbMyEntry() { try { return JSON.parse(localStorage.getItem('shami2048-myscore') || 'null'); } catch (e) { return null; } }
+  function lbSaveMyEntry(entry) { try { localStorage.setItem('shami2048-myscore', JSON.stringify(entry)); } catch (e) {} }
+  // 合并服务端榜单与“我”的本地战绩：服务端只保留前 N 名时，自己也能上榜
+  function lbMerged() {
+    var list = leaderboard.slice();
+    if (userName && !list.some(function (e) { return e.name === userName; })) {
+      var me = lbMyEntry();
+      if (me && me.name === userName) list.push(me);
+    }
+    list.sort(function (a, b) { return b.score - a.score; });
+    return list;
+  }
+  function lbMyRank(list) {
+    if (!userName) return -1;
+    for (var i = 0; i < list.length; i++) if (list[i].name === userName) return i;
+    return -1;
+  }
+  function lbBuildRowsHtml(list) {
+    var html = '';
+    list.forEach(function (e, i) {
+      var isMe = e.name === userName;
+      var medals = ['🥇','🥈','🥉'];
+      var rankIcon = medals[i] || ('#' + (i + 1));
+      var deltaHtml = e.lastDelta ? (' <span class="lb-delta ' + (e.lastDelta > 0 ? 'up' : 'down') + '">' + (e.lastDelta > 0 ? '+' : '') + e.lastDelta + '</span>') : '';
+      html += '<tr' + (isMe ? ' class="lb-me"' : '') + '><td class="lb-rank">' + rankIcon + '</td><td>' + e.name + (isMe ? ' 👈' : '') + '</td><td class="lb-score">' + e.score + deltaHtml + '</td><td style="font-size:11px;color:#64748b;">' + (i===0?'👑':i===1?'🥈':i===2?'🥉':'') + '</td></tr>';
+    });
+    return html;
+  }
+  function lbRefreshStats(list) {
+    var topName = list.length > 0 ? list[0].name : '—';
+    var el = document.getElementById('lb-top-name'); if (el) el.textContent = topName;
+    var el2 = document.getElementById('lb-total-games'); if (el2) el2.textContent = list.reduce(function(s,e){return s+Math.abs(e.score);},0);
+    var el3 = document.getElementById('lb-total-players'); if (el3) el3.textContent = list.length;
+    var meBar = document.getElementById('lb-me-bar');
+    if (meBar) {
+      var myRank = lbMyRank(list);
+      if (myRank >= 0) {
+        var d = list[myRank].lastDelta ? (' <span class="lb-delta ' + (list[myRank].lastDelta > 0 ? 'up' : 'down') + '">' + (list[myRank].lastDelta > 0 ? '+' : '') + list[myRank].lastDelta + '</span>') : '';
+        meBar.innerHTML = '👈 我的排名 <b>#' + (myRank + 1) + '</b> · 积分 ' + list[myRank].score + d;
+      } else {
+        meBar.innerHTML = '👈 完成一局在线 PK 即可上榜';
+      }
+    }
+  }
+  function setUserName(name) { userName = name.trim(); localStorage.setItem('shami2048-username', userName); }
+  function getUserName() { return userName || '未设置昵称'; }
+
+  function ensureUserName(callback) {
+    if (userName) { callback(); return; }
+    pkModalBody.innerHTML =
+      '<div style="text-align:center;color:#94a3b8;margin-bottom:8px;">🎮 设置你的对战昵称</div>' +
+      '<div class="username-row"><input id="name-input" placeholder="输入昵称" maxlength="12" autofocus>' +
+      '<button class="name-save" id="name-save">确 定</button></div>';
+    pkModal.classList.add('show');
+    document.body.classList.add('no-scroll');
+    document.getElementById('name-save').addEventListener('click', function () {
+      var v = document.getElementById('name-input').value.trim();
+      if (!v) return;
+      setUserName(v);
+      pkModal.classList.remove('show');
+      document.body.classList.remove('no-scroll');
+      callback();
+    });
+    document.getElementById('name-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') document.getElementById('name-save').click();
+    });
+  }
+
+  function updateRank(delta) {
+    if (!userName) return;
+    // 先更新本地缓存
+    var found = leaderboard.find(function (e) { return e.name === userName; });
+    var selfScore;
+    if (found) { found.score += delta; found.lastDelta = delta; selfScore = found.score; }
+    else { selfScore = delta; leaderboard.push({ name: userName, score: delta, lastDelta: delta }); }
+    leaderboard.sort(function (a, b) { return b.score - a.score; });
+    saveLB();
+    lbSaveMyEntry({ name: userName, score: selfScore, lastDelta: delta });
+    // 同步到服务端
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', SERVER_URL + '/api/lb-pk', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          var r = JSON.parse(xhr.responseText);
+          if (r.leaderboard) { leaderboard = r.leaderboard; saveLB(); }
+        }
+      };
+      xhr.send(JSON.stringify({ name: userName, delta: delta }));
+    } catch (e) {}
+  }
+
+  /* ---- 累计合成分数榜：上报（最大合成数 + 本局总分） ---- */
+  function mergeReport() {
+    if (mergeSent) return;
+    var nm = userName || getUserName(); // 无昵称时用默认名，单机玩家同样记录
+    if (score <= 0 && gameMaxMerge <= 0) return; // 空局不上报
+    mergeSent = true;
+    // 本地缓存先更新
+    var found = mergeboard.find(function (e) { return e.name === nm; });
+    if (found) { found.max_tile = Math.max(found.max_tile, gameMaxMerge); found.total_score += score; }
+    else mergeboard.push({ name: nm, max_tile: gameMaxMerge, total_score: score });
+    mergeboard.sort(function (a, b) { return b.total_score - a.total_score; });
+    try { localStorage.setItem('shami2048-mergeboard', JSON.stringify(mergeboard)); } catch (e) {}
+    // 同步到服务端
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', SERVER_URL + '/api/lb-merge', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          try {
+            var r = JSON.parse(xhr.responseText);
+            if (r.leaderboard) { mergeboard = r.leaderboard; localStorage.setItem('shami2048-mergeboard', JSON.stringify(mergeboard)); }
+          } catch (e) {}
+        }
+      };
+      xhr.send(JSON.stringify({ name: nm, maxTile: gameMaxMerge, score: score }));
+    } catch (e) {}
+  }
+  // 页面关闭时兜底上报（玩完直接关页面也不丢数据）
+  function mergeReportOnExit() {
+    if (mergeSent) return;
+    if (score <= 0 && gameMaxMerge <= 0) return;
+    mergeSent = true;
+    var nm = userName || getUserName();
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(SERVER_URL + '/api/lb-merge', JSON.stringify({ name: nm, maxTile: gameMaxMerge, score: score }));
+      } else {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', SERVER_URL + '/api/lb-merge', false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ name: nm, maxTile: gameMaxMerge, score: score }));
+      }
+    } catch (e) {}
+  }
+  try { window.addEventListener('pagehide', mergeReportOnExit); } catch (e) {}
+  try { window.addEventListener('beforeunload', mergeReportOnExit); } catch (e) {}
+
+  /* ---- 合成榜：拉取 + 渲染 ---- */
+  function mbFetch(cb) {
+    if (!SERVER_URL) { if (cb) cb(); return; }
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', SERVER_URL + '/api/lb-merge', true);
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          try { mergeboard = JSON.parse(xhr.responseText); localStorage.setItem('shami2048-mergeboard', JSON.stringify(mergeboard)); } catch (e) {}
+        }
+        if (cb) cb();
+      };
+      xhr.onerror = function () { if (cb) cb(); };
+      xhr.send();
+    } catch (e) { if (cb) cb(); }
+  }
+  function mbBuildRowsHtml(list) {
+    var html = '';
+    list.forEach(function (e, i) {
+      var isMe = e.name === userName;
+      var medals = ['🥇', '🥈', '🥉'];
+      var rankIcon = medals[i] || ('#' + (i + 1));
+      var mt = e.max_tile || 0, ts = e.total_score || 0;
+      html += '<tr' + (isMe ? ' class="lb-me"' : '') + '><td class="lb-rank">' + rankIcon + '</td><td>' + e.name + (isMe ? ' 👈' : '') + '</td><td class="lb-score">' + mt + '</td><td class="lb-score">' + ts + '</td></tr>';
+    });
+    return html;
+  }
+  function mbRefreshStats(list) {
+    var el = document.getElementById('mb-total-players'); if (el) el.textContent = list.length;
+    var el2 = document.getElementById('mb-top-name'); if (el2) el2.textContent = list.length > 0 ? list[0].name : '—';
+    var el3 = document.getElementById('mb-top-tile'); if (el3) el3.textContent = list.length > 0 ? (list[0].max_tile || 0) : '—';
+  }
+  function mbRenderPanel() {
+    var tbl = document.querySelector('#mb-table-body');
+    if (!tbl) return;
+    var list = mergeboard.slice().sort(function (a, b) { return (b.total_score || 0) - (a.total_score || 0); });
+    tbl.innerHTML = list.length ? mbBuildRowsHtml(list) : '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:18px;">暂无数据<br><span style="font-size:12px;">完成一局游戏（合成方块）后上榜</span></td></tr>';
+    mbRefreshStats(list);
+  }
+
+  function showLeaderboard() {
+    // 本局有成绩未上报？先补报（打开排行榜时就能看到本局数据）
+    mergeReport();
+    // 从服务端拉取最新排行
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', SERVER_URL + '/api/lb-pk', true);
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          try { leaderboard = JSON.parse(xhr.responseText); saveLB(); } catch (e) {}
+        }
+        renderLb();
+      };
+      xhr.onerror = function () { renderLb(); };
+      xhr.send();
+    } catch (e) { renderLb(); }
+    return;
+
+    function renderLb() {
+    var list = lbMerged();
+    var totalPlayers = list.length;
+    var totalGames = list.reduce(function(s,e){return s+Math.abs(e.score);},0);
+
+    var html = '<div class="lb-tabs">' +
+      '<button class="lb-tab active" id="lb-tab-pk">🏆 PK 积分榜</button>' +
+      '<button class="lb-tab" id="lb-tab-merge">🔢 合成榜</button>' +
+      '</div>';
+    html += '<div id="lb-panel-pk">';
+    html += '<div class="lb-stats">' +
+      '<div class="lb-stat-box"><div class="val" id="lb-total-players">' + totalPlayers + '</div><div class="lbl">玩家数</div></div>' +
+      '<div class="lb-stat-box"><div class="val" id="lb-total-games">' + totalGames + '</div><div class="lbl">总对局</div></div>' +
+      '<div class="lb-stat-box"><div class="val" id="lb-top-name">' + (list.length > 0 ? list[0].name : '—') + '</div><div class="lbl">👑 榜首</div></div>' +
+      '</div>';
+    html += '<div class="lb-me-bar" id="lb-me-bar"></div>';
+    html += '<div class="lb-scroll">';
+    if (list.length === 0) {
+      html += '<div class="lb-empty">🏆 暂无对战记录<br><span style="font-size:12px;">完成一局在线 PK 后上榜，所有人都能看见</span></div>';
+    } else {
+      html += '<table class="lb-table"><tr><th>排名</th><th>玩家</th><th>积分</th><th></th></tr><tbody id="lb-table-body">' + lbBuildRowsHtml(list) + '</tbody></table>';
+    }
+    html += '</div>';
+    html += '<div class="lb-info">所有在线 PK 玩家排名 · 昵称：<b>' + getUserName() + '</b> <a href="#" id="lb-change-name" style="color:#fbbf24;">修改</a> · <a href="#" id="lb-clear" style="color:#64748b;">清空</a></div>';
+    html += '</div>';
+    html += '<div id="lb-panel-merge" style="display:none;">';
+    html += '<div class="lb-stats">' +
+      '<div class="lb-stat-box"><div class="val" id="mb-total-players">0</div><div class="lbl">玩家数</div></div>' +
+      '<div class="lb-stat-box"><div class="val" id="mb-top-name">—</div><div class="lbl">👑 榜首</div></div>' +
+      '<div class="lb-stat-box"><div class="val" id="mb-top-tile">—</div><div class="lbl">最大合成</div></div>' +
+      '</div>';
+    html += '<div class="lb-scroll"><table class="lb-table"><tr><th>排名</th><th>玩家</th><th>最大合成</th><th>总分</th></tr><tbody id="mb-table-body"><tr><td colspan="4" style="text-align:center;color:#64748b;padding:18px;">加载中…</td></tr></tbody></table></div>';
+    html += '<div class="lb-info">累计合成排行 · 最大合成数 + 累计总分数（单人和 PK 对局均统计）</div>';
+    html += '</div>';
+
+    showOverlay('🌍 全球排行榜', html, [
+      { label: '关闭', ghost: true, action: function () { overlay.classList.remove('show'); document.body.classList.remove('no-scroll'); } }
+    ]);
+    lbRefreshStats(list);
+    mbRenderPanel();
+    mbFetch(mbRenderPanel);
+
+    // Tab 切换
+    document.getElementById('lb-tab-pk').addEventListener('click', function () {
+      document.getElementById('lb-tab-pk').className = 'lb-tab active';
+      document.getElementById('lb-tab-merge').className = 'lb-tab';
+      document.getElementById('lb-panel-pk').style.display = '';
+      document.getElementById('lb-panel-merge').style.display = 'none';
+    });
+    document.getElementById('lb-tab-merge').addEventListener('click', function () {
+      document.getElementById('lb-tab-merge').className = 'lb-tab active';
+      document.getElementById('lb-tab-pk').className = 'lb-tab';
+      document.getElementById('lb-panel-merge').style.display = '';
+      document.getElementById('lb-panel-pk').style.display = 'none';
+      mbRenderPanel(); // 切到合成榜时确保展示最新
+    });
+
+    document.getElementById('lb-change-name').addEventListener('click', function (e) {
+      e.preventDefault();
+      overlay.classList.remove('show');
+      userName = ''; localStorage.removeItem('shami2048-username');
+      ensureUserName(function () { showLeaderboard(); });
+    });
+    document.getElementById('lb-clear').addEventListener('click', function (e) {
+      e.preventDefault();
+      if (confirm('确认清空所有排名数据？此操作不可撤销。')) {
+        leaderboard = []; saveLB();
+        localStorage.removeItem('shami2048-myscore');
+        overlay.classList.remove('show');
+        showLeaderboard();
+      }
+    });
+    } // end renderLb
+  }
+
+  /* ---- 胜利粒子特效 ---- */
+  function spawnConfetti() {
+    var container = document.getElementById('confetti-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'confetti-container';
+      container.className = 'confetti-container';
+      document.querySelector('.board-wrap').appendChild(container);
+    }
+    var colors = ['#fbbf24','#f59e0b','#ef4444','#3b82f6','#22c55e','#ec4899','#8b5cf6','#06b6d4'];
+    for (var i = 0; i < 40; i++) {
+      var piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      var c = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.cssText = 'left:' + Math.random() * 100 + '%;top:-10px;width:' + (6 + Math.random() * 10) + 'px;height:' + (6 + Math.random() * 10) + 'px;background:' + c + ';animation-delay:' + (Math.random() * .6) + 's;animation-duration:' + (1.2 + Math.random() * 1.5) + 's;';
+      container.appendChild(piece);
+    }
+    setTimeout(function () { if (container) container.remove(); }, 2500);
+  }
+
+  btnLb.addEventListener('click', function () {
+    if (pkMode) {
+      showOverlay('对战进行中', '请先退出当前对局再查看排行榜', [{ label: '知道了', action: function () { overlay.classList.remove('show'); document.body.classList.remove('no-scroll'); } }]);
+      return;
+    }
+    showLeaderboard();
+  });
+
+  /* ================= PK 对战 ================= */
+  var pkMode = null;          // null | 'online' | 'local'
+  var pkGo = false;           // 倒计时结束后才允许操作
+  var pkMyTime = 0, pkMyMoves = 0, pkMyFinished = false, pkMyResult = null;
+  var pkOppResult = null, oppTime = 0, oppMoves = 0, oppScore = 0, oppMax = 0;
+  var huntLeft = 0;
+  var localTurn = 1, localTimes = [0, 0], localMoves = [0, 0], localScores = [0, 0], localFinished = false;
+  var pkTick = null, lastSentSec = -1;
+  var peer = null, conn = null, hostSide = false;
+  // —— 联机优化新增状态 ——
+  var roomCode = null;            // 加入方记住房间号，用于断线重连
+  var userQuit = false;           // 用户主动退出（避免误触发重连）
+  var reconnectActive = false, reconnectTimer = null, reconnectTries = 0;
+  var pendingPeer = null;         // 尚未 open 的 peer 引用（超时/取消时销毁）
+  var connOpen = false;           // 当前数据通道是否已建立
+  var startWaitTimer = null;      // 加入方等待开局超时
+  var rtt = null;                 // 最近一次往返延迟(ms)
+  var prevGridSum = -1, prevOppMoves = -1, prevOppScore = -1; // 简易防作弊校验基线
+  var gameStarted = false;        // 本房间是否已开局（区分新连接 vs 重连）
+  var roomSeed = null;            // 本局共享种子（晚加入/刷新恢复时复用）
+
+  // 互联网联机 ICE 配置：STUN 穿透 + TURN 云端中继（跨网络/跨运营商必通）
+  // 说明：下方静态 TURN 凭据为公开共享凭据、会过期；代码末尾会自动从公开端点拉取最新 TURN 服务器追加进列表，拉取失败则退回纯 STUN（大多数家用网络可直连）
+  var PK_ICE = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      { urls: 'stun:openrelay.metered.ca:80' },
+      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    ]
+  };
+
+  // 运行时拉取最新 TURN 服务器（公开共享凭据会定期更换，动态获取提高跨网成功率）
+  (function loadTurnServers() {
+    try {
+      var x = new XMLHttpRequest();
+      x.open('GET', 'https://www.metered.ca/tools/openrelay/', true);
+      x.timeout = 4000;
+      x.onload = function () {
+        try {
+          var list = JSON.parse(x.responseText);
+          if (!list || !list.length) return;
+          var extra = [];
+          for (var i = 0; i < list.length; i++) {
+            var s = list[i];
+            if (s && s.url) extra.push({ urls: s.url, username: s.username || '', credential: s.credential || '' });
+          }
+          if (extra.length) PK_ICE.iceServers = PK_ICE.iceServers.concat(extra);
+        } catch (e) {}
+      };
+      x.onerror = function () {};
+      x.send();
+    } catch (e) {}
+  })();
+
+  var miniEl = document.getElementById('mini-board');
+  var btnSurrender = document.getElementById('btn-surrender');
+  var btnQuitOnline = document.getElementById('btn-quit-online');
+  var btnOnlineSur = document.getElementById('btn-online-sur');
+  var btnOppView = document.getElementById('btn-opp-view');
+  var pkHuntLine = document.getElementById('pk-hunt-line');
+  var lagWarn = document.getElementById('lag-warn');
+  var surTimer = null, surTimer2 = null;
+  var lastOppMsg = 0, pingTimer = null; // 网络延迟检测
+  var oppGrid = null, oppGridPrev = null, oppModalOpen = false; // 对手棋盘大图（实时）
+
+  function genCode() {
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var s = '';
+    for (var i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
+  function fmtTime2(s) {
+    s = Math.max(0, Math.floor(s));
+    var m = Math.floor(s / 60), ss = s % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss;
+  }
+  function gridValues() {
+    var g = [];
+    for (var r = 0; r < SIZE; r++) {
+      var row = [];
+      for (var c = 0; c < SIZE; c++) row.push(board[r][c] ? board[r][c].value : 0);
+      g.push(row);
+    }
+    return g;
+  }
+  function renderMini(el, grid) {
+    el.innerHTML = '';
+    for (var r = 0; r < SIZE; r++) for (var c = 0; c < SIZE; c++) {
+      var v = grid[r][c];
+      var cell = document.createElement('div');
+      if (v) {
+        cell.className = 'mini-cell mini-' + (v <= 2048 ? v : 'super');
+        cell.textContent = v;
+        cell.style.fontSize = v < 100 ? '15px' : v < 1000 ? '12px' : '10px';
+      } else {
+        cell.className = 'mini-cell';
+        cell.style.background = 'rgba(255,255,255,.05)';
+      }
+      el.appendChild(cell);
+    }
+  }
+  // 大图对手棋盘（实时）：首次建 16 格缓存，之后只更新变化的格子，动画不会被每帧重建打断
+  var oppCells = null;
+  function renderOppBoard() {
+    var el = document.getElementById('pk-opp-board');
+    if (!el || !oppGrid) return;
+    var g = oppGrid;
+    if (!oppCells || oppCells.length !== SIZE * SIZE) {
+      el.innerHTML = '';
+      oppCells = [];
+      for (var r = 0; r < SIZE; r++) for (var c = 0; c < SIZE; c++) {
+        var cell = document.createElement('div');
+        cell.className = 'opp-cell';
+        var inner = document.createElement('div');
+        inner.className = 'opp-inner';
+        cell.appendChild(inner);
+        el.appendChild(cell);
+        oppCells.push(inner);
+      }
+    }
+    var prev = oppGridPrev || {};
+    for (var r2 = 0; r2 < SIZE; r2++) for (var c2 = 0; c2 < SIZE; c2++) {
+      var idx = r2 * SIZE + c2;
+      var v = (g[r2] && g[r2][c2]) || 0;
+      var inner = oppCells[idx];
+      if (v) {
+        var cls = 'opp-inner v' + (v <= 2048 ? v : 'super');
+        if (inner.className !== cls || inner.textContent !== String(v)) {
+          inner.className = cls;
+          inner.textContent = v;
+          inner.style.fontSize = v < 100 ? '30px' : (v < 1000 ? '22px' : '16px');
+          var pv = (prev[r2] && prev[r2][c2]) || 0;
+          if (pv === 0 || v > pv) { inner.classList.remove('pop'); void inner.offsetWidth; inner.classList.add('pop'); } // 新方块/合并变大 → 弹跳
+        }
+      } else {
+        if (inner.className !== 'opp-inner' || inner.textContent !== '') {
+          inner.className = 'opp-inner';
+          inner.textContent = '';
+        }
+      }
+    }
+    oppGridPrev = g;
+    updOppHead();
+  }
+  // 弹窗顶部信息（轻量，仅文本，可高频调用）
+  function updOppHead() {
+    var st = document.getElementById('opp2-state');
+    if (st) st.textContent = pkOppResult ? (pkOppResult.reason === 'win' ? '✅ 已完成(2048)' : '❌ 已结束') : '对战中';
+    var s = document.getElementById('opp2-score'); if (s) s.textContent = oppScore;
+    var m = document.getElementById('opp2-moves'); if (m) m.textContent = oppMoves;
+    var t = document.getElementById('opp2-time'); if (t) t.textContent = fmtTime2(oppTime);
+    var p2 = document.getElementById('opp2-ping'); if (p2) p2.textContent = rtt == null ? '—' : (rtt < 1000 ? rtt + ' ms' : '>1s');
+  }
+  function openOppBoard() {
+    if (pkMode !== 'online') return;
+    renderOppBoard();
+    oppModalOpen = true;
+    document.getElementById('pk-opp-modal').classList.add('show');
+    document.body.classList.add('no-scroll');
+  }
+  function closeOppBoard() {
+    oppModalOpen = false;
+    var m = document.getElementById('pk-opp-modal');
+    if (m) m.classList.remove('show');
+    document.body.classList.remove('no-scroll');
+  }
+  function setOppGrid(g, resetPrev) {
+    oppGrid = g;
+    if (resetPrev) oppGridPrev = null;
+    if (oppModalOpen) renderOppBoard();
+  }
+  function send(obj) {
+    try { if (conn && conn.open) conn.send(obj); } catch (e) {}
+  }
+
+  /* ================= 联机健壮性增强（重连 / 同步 / 防作弊） ================= */
+
+  // 统一销毁 peer（避免重复创建导致资源泄漏 / ID 冲突）
+  function destroyPeer() {
+    try { if (peer) peer.destroy(); } catch (e) {}
+    peer = null;
+    try { if (pendingPeer) pendingPeer.destroy(); } catch (e) {}
+    pendingPeer = null;
+  }
+
+  // 数据通道统一挂载事件
+  function attachConn(c) {
+    conn = c;
+    connOpen = true;
+    c.on('data', function (d) {
+      // 单条消息异常不得中断后续消息处理（否则对手棋盘会“卡住不动”）
+      try { onPeerMsg(d); } catch (e) { console.error('[PK] 消息处理异常:', e && e.message); }
+    });
+    c.on('close', onPeerClose);
+    c.on('error', function () {
+      // 通道错误且对局未结束 → 按��开处理（触发重连/等待）
+      if (pkMode === 'online' && !pkMyFinished && !userQuit) onPeerClose();
+    });
+  }
+
+  // 我方完整状态（断线重连时同步给对方）
+  function myStatePayload() {
+    return {
+      t: 'sync',
+      grid: gridValues(),
+      score: score,
+      moves: pkMyMoves,
+      time: Math.floor(pkMyTime),
+      max: maxOnBoard(),
+      finished: pkMyFinished,
+      reason: pkMyResult ? pkMyResult.reason : null,
+      opp: pkOppResult ? {
+        reason: pkOppResult.reason, time: pkOppResult.time, moves: pkOppResult.moves,
+        score: pkOppResult.score, max: pkOppResult.max, has2048: !!pkOppResult.has2048
+      } : null
+    };
+  }
+
+  // 用对方状态覆盖“对手面板”（重连后恢复）
+  function applyOppState(d) {
+    oppMoves = d.moves || 0; oppScore = d.score || 0; oppTime = d.time || 0;
+    oppMax = d.max || 0;
+    if (d.grid) {
+      var g = d.grid;
+      for (var ri = 0; ri < SIZE; ri++)
+        for (var ci = 0; ci < SIZE; ci++)
+          if (g[ri] && g[ri][ci] > oppMax) oppMax = g[ri][ci];
+      renderMini(miniEl, g);
+      setOppGrid(g, true);
+    } else {
+      renderMini(miniEl, emptyBoard());
+      setOppGrid(emptyBoard(), true);
+    }
+    prevGridSum = -1; prevOppMoves = -1; prevOppScore = -1; // 重置校验基线
+    if (d.finished) {
+      pkOppResult = {
+        reason: d.reason || 'over',
+        time: d.time || 0, moves: d.moves || 0, score: d.score || 0,
+        max: d.max || 0, has2048: (d.max || 0) >= 2048
+      };
+      onOppFinish();
+    } else {
+      pkOppResult = null;
+      updOpp();
+    }
+  }
+
+  // 简易防作弊：每次移动后棋盘总和只能 +2/+4，分数与步数只增不减
+  function validateOppMove(d) {
+    if (typeof d.moves === 'number') {
+      if (prevOppMoves >= 0 && d.moves < prevOppMoves) return false;
+      prevOppMoves = d.moves;
+    }
+    if (typeof d.score === 'number') {
+      if (prevOppScore >= 0 && d.score < prevOppScore) return false;
+      prevOppScore = d.score;
+    }
+    if (d.grid) {
+      var sum = 0;
+      for (var r = 0; r < SIZE; r++)
+        for (var c = 0; c < SIZE; c++) sum += (d.grid[r] && d.grid[r][c]) || 0;
+      if (prevGridSum >= 0 && sum !== prevGridSum + 2 && sum !== prevGridSum + 4) return false;
+      prevGridSum = sum;
+    }
+    return true;
+  }
+
+  // —— 断线重连（加入方主动重连；房主端保持房间在线） ——
+  function showReconnect(msg) {
+    var t = document.getElementById('reconnect-text');
+    if (t) t.textContent = msg || '⚠️ 连接中断，正在重连…';
+    document.getElementById('reconnect-warn').classList.add('show');
+  }
+  function hideReconnect() {
+    document.getElementById('reconnect-warn').classList.remove('show');
+  }
+  function startReconnect() {
+    if (pkMode !== 'online' || userQuit || reconnectActive) return;
+    reconnectActive = true;
+    reconnectTries = 0;
+    showReconnect('⚠️ 连接中断，正在重连…（可继续操作）');
+    tryReconnect();
+  }
+  function tryReconnect() {
+    if (!reconnectActive || pkMode !== 'online' || userQuit) return;
+    reconnectTries++;
+    if (reconnectTries > 10) {
+      showReconnect('❌ 重连失败（已尝试 10 次），请点击「放弃对局」');
+      return;
+    }
+    destroyPeer();
+    pendingPeer = new Peer({ debug: 0, config: PK_ICE });
+    peer = pendingPeer;
+    peer.on('open', function () {
+      pendingPeer = null;
+      if (!reconnectActive) { destroyPeer(); return; }
+      var c = peer.connect('shami2048-' + roomCode, { reliable: true });
+      var t = setTimeout(function () { if (c && !c.open) { try { c.close(); } catch (e) {} } }, 8000);
+      c.on('open', function () {
+        clearTimeout(t);
+        if (!reconnectActive) { try { c.close(); } catch (e) {} return; }
+        attachConn(c);
+        reconnectActive = false;
+        hideReconnect();
+        AudioFX.join();
+        send({ t: 'resync' });
+        send(myStatePayload());
+      });
+      c.on('error', function () { clearTimeout(t); });
+      c.on('close', function () { clearTimeout(t); });
+    });
+    peer.on('error', function (err) {
+      pendingPeer = null;
+      if (!reconnectActive) return;
+      if (err && err.type === 'peer-unavailable') {
+        // 房主已离线，重连无意义
+        reconnectActive = false;
+        showReconnect('❌ 无法重连：房主已离线');
+        setTimeout(function () {
+          if (pkMode === 'online' && !pkMyFinished) {
+            stopTicking();
+            showOverlay('对手已离线', '无法重新连接对方，对局终止', [
+              { label: '返回主菜单', action: exitPK }
+            ]);
+          }
+        }, 1200);
+        return;
+      }
+      scheduleReconnectRetry();
+    });
+  }
+  function scheduleReconnectRetry() {
+    if (!reconnectActive) return;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(function () {
+      reconnectTimer = null;
+      showReconnect('⚠️ 重连中…（第 ' + reconnectTries + ' 次）');
+      tryReconnect();
+    }, 2500);
+  }
+  function stopReconnect() {
+    reconnectActive = false;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    hideReconnect();
+  }
+
+  // 再来一局（在线）：房主出新种子，双方直接重开，无需重新建房
+  function rematchOnline() {
+    if (pkMode !== 'online' || !connOpen) return;
+    if (hostSide) {
+      var seed = Math.floor(Math.random() * 1e9);
+      send({ t: 'start', seed: seed });
+      startOnlineGame(seed);
+    } else {
+      send({ t: 'rematch-req' });
+    }
+  }
+
+  // 加入方连接建立后的统一处理（首次加入 / 断线重连 / 刷新恢复）
+  function onJoinConnOpen() {
+    if (pkMode === 'online' && gameStarted) {
+      send({ t: 'resync' });
+      send(myStatePayload());
+      AudioFX.join();
+    } else {
+      send({ t: 'hello' });
+      if (startWaitTimer) clearTimeout(startWaitTimer);
+      startWaitTimer = setTimeout(function () {
+        startWaitTimer = null;
+        if (pkMode === 'online' && !gameStarted) {
+          errMsg('❌ 开局超时（12 秒），请重试');
+          destroyPeer();
+        }
+      }, 12000);
+    }
+  }
+
+  // 复制房间号
+  function copyRoomCode(code) {
+    function legacy(t) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = t;
+        ta.style.cssText = 'position:fixed;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      } catch (e) {}
+    }
+    var done = function () {
+      var b = document.getElementById('pk-copy-code');
+      if (b) { b.textContent = '✅ 已复制'; setTimeout(function () { if (b) b.textContent = '📋 复制房间号'; }, 1500); }
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(done, function () { legacy(code); done(); });
+      } else { legacy(code); done(); }
+    } catch (e) { legacy(code); done(); }
+  }
+
+  function setPkButtons(on) {
+    btnNew.disabled = on;
+    btnPk.disabled = on;
+  }
+  function pkUiShow() {
+    statsEl.style.display = 'none';
+    historyEl.style.display = 'none';
+    pkBar.style.display = 'block';
+  }
+  function pkUiHide() {
+    pkBar.style.display = 'none';
+    statsEl.style.display = '';
+    historyEl.style.display = '';
+  }
+
+  function startCountdown(done) {
+    pkGo = false;
+    overlay.classList.remove('win', 'lose', 'draw');
+    var n = 3;
+    overlayTitle.textContent = String(n);
+    overlaySub.innerHTML = '';
+    overlayBtns.innerHTML = '';
+    overlay.classList.add('show');
+    document.body.classList.add('no-scroll');
+    var iv = setInterval(function () {
+      n--;
+      if (n <= 0) {
+        clearInterval(iv);
+        overlayTitle.textContent = '开始！';
+        AudioFX.newGame();
+        setTimeout(function () {
+          document.body.classList.remove('no-scroll');
+          overlay.classList.remove('show');
+          pkGo = true;
+          done();
+        }, 500);
+      } else {
+        overlayTitle.textContent = String(n);
+      }
+    }, 800);
+  }
+
+  function startTicking() {
+    if (pkTick) return;
+    lastSentSec = -1;
+    pkTick = setInterval(onTick, 100);
+  }
+  function stopTicking() {
+    if (pkTick) { clearInterval(pkTick); pkTick = null; }
+  }
+  function onTick() {
+    if (pkMode === 'online') {
+      pkMyTime += 0.1;
+      document.getElementById('pk-my-time').textContent = fmtTime2(pkMyTime);
+      var s = Math.floor(pkMyTime);
+      if (s !== lastSentSec) {
+        lastSentSec = s;
+        send({ t: 'time', time: s });
+      }
+      if (huntLeft > 0) {
+        huntLeft -= 0.1;
+        updHunt();
+        if (huntLeft <= 0) huntTimeout();
+      }
+      if (oppModalOpen) updOppHead(); // 弹窗打开时实时刷新对手时间/延迟（仅文本，不重建棋盘）
+      // 对手延迟检测（5秒无消息→警告，30秒→掉线；重连期间不终止）
+      if (lastOppMsg > 0 && Date.now() - lastOppMsg > 5000) {
+        if (!reconnectActive && !userQuit) lagWarn.classList.add('show');
+        if (!reconnectActive && !userQuit && Date.now() - lastOppMsg > 30000) {
+          lagWarn.textContent = '⚠️ 对手已断线超30秒，即将终止对局';
+          if (Date.now() - lastOppMsg > 35000) {
+            if (!pkMyFinished) {
+              stopTicking();
+              showOverlay('对手已离线', '对方网络断开超过 30 秒，对局终止', [
+                { label: '返回主菜单', action: exitPK }
+              ]);
+            }
+          }
+        }
+      } else {
+        lagWarn.classList.remove('show');
+      }
+    } else if (pkMode === 'local') {
+      if (!localFinished) {
+        localTimes[localTurn - 1] += 0.1;
+        updLocal();
+      }
+    }
+  }
+
+  function updHunt() {
+    var el = document.getElementById('pk-hunt');
+    if (huntLeft > 0) {
+      el.textContent = '⏳ 对手已达成2048！你还有 ' + Math.ceil(huntLeft) + ' 秒追赶';
+      pkHuntLine.style.display = '';
+    } else {
+      el.textContent = '';
+      pkHuntLine.style.display = 'none';
+    }
+  }
+  function updOpp() {
+    var state = document.getElementById('opp-state');
+    if (pkOppResult) {
+      state.textContent = pkOppResult.reason === 'win' ? '✅ 已完成(2048)' : '❌ 已结束';
+    } else {
+      state.textContent = '对战中';
+    }
+    document.getElementById('opp-time').textContent = fmtTime2(oppTime);
+    document.getElementById('opp-moves').textContent = oppMoves;
+    document.getElementById('opp-score').textContent = oppScore;
+    var pingEl = document.getElementById('opp-ping');
+    if (pingEl) pingEl.textContent = rtt == null ? '—' : (rtt < 1000 ? rtt + ' ms' : '>1s');
+    if (oppModalOpen) updOppHead();
+  }
+  function updLocal() {
+    document.getElementById('p1-time').textContent = fmtTime2(localTimes[0]);
+    document.getElementById('p2-time').textContent = fmtTime2(localTimes[1]);
+    document.getElementById('p1-moves').textContent = localMoves[0];
+    document.getElementById('p2-moves').textContent = localMoves[1];
+    document.getElementById('p1-score').textContent = localScores[0];
+    document.getElementById('p2-score').textContent = localScores[1];
+    var badge = document.getElementById('turn-badge');
+    badge.innerHTML = localFinished ? '已结束' : ('轮到<br>玩家' + localTurn);
+    badge.className = 'turn-badge' + (localFinished ? '' : (' t' + localTurn));
+    if (localFinished) btnSurrender.style.display = 'none';
+  }
+
+  function pkInitBoard(seed) {
+    clearTiles();
+    board = emptyBoard();
+    tiles = [];
+    score = 0; moves = 0;
+    over = false; won = false; busy = false;
+    rng = seed != null ? mulberry32(seed) : Math.random;
+    updateScore();
+    movesEl.textContent = '0';
+    addRandomTile();
+    addRandomTile();
+    updateMaxTile();
+  }
+
+  function startOnlineGame(seed) {
+    if (soloTimer) { clearInterval(soloTimer); soloTimer = null; }
+    if (startWaitTimer) { clearTimeout(startWaitTimer); startWaitTimer = null; }
+    pkMode = 'online';
+    gameStarted = true;
+    roomSeed = seed;
+    pkGo = false;
+    userQuit = false;
+    stopReconnect();
+    pkMyTime = 0; pkMyMoves = 0; pkMyFinished = false; pkMyResult = null;
+    pkOppResult = null; oppTime = 0; oppMoves = 0; oppScore = 0; oppMax = 0; huntLeft = 0;
+    prevGridSum = -1; prevOppMoves = -1; prevOppScore = -1;
+    localFinished = false;
+    pkModal.classList.remove('show');
+    var errEl = document.getElementById('pk-err');
+    if (errEl) errEl.textContent = ''; // 清掉“正在连接…”提示
+    setPkButtons(true);
+    pkUiShow();
+    onlineBar.style.display = '';
+    pkMyline.style.display = '';
+    localBar.style.display = 'none';
+    btnSurrender.style.display = 'none';
+    btnOnlineSur.style.display = 'block';
+    lagWarn.classList.remove('show');
+    hideReconnect();
+    lastOppMsg = Date.now(); // 重置延迟检测
+    rtt = null;
+    updOpp();
+    if (pingTimer) clearInterval(pingTimer);
+    pingTimer = setInterval(function () { send({ t: 'ping', ts: Date.now() }); }, 3000); // 每3秒测延迟
+    document.getElementById('pk-my-time').textContent = '00:00';
+    document.getElementById('pk-my-moves').textContent = '0';
+    document.getElementById('pk-my-name').textContent = (userName ? '🦐 ' + userName : '🦐 我') + '：';
+    updHunt();
+    updOpp();
+    renderMini(miniEl, emptyBoard());
+    setOppGrid(emptyBoard(), true);
+    btnOppView.style.display = '';
+    pkInitBoard(seed);
+    startCountdown(function () { startTicking(); });
+  }
+
+  function startLocalPK() {
+    if (soloTimer) { clearInterval(soloTimer); soloTimer = null; }
+    pkMode = 'local';
+    pkGo = false;
+    localTurn = 1; localTimes = [0, 0]; localMoves = [0, 0]; localScores = [0, 0]; localFinished = false;
+    pkMyFinished = false;
+    clearTimeout(surTimer);
+    btnSurrender.classList.remove('confirm');
+    btnSurrender.textContent = '🏳️ 认输（轮到谁谁认）';
+    btnSurrender.style.display = '';
+    pkModal.classList.remove('show');
+    setPkButtons(true);
+    pkUiShow();
+    onlineBar.style.display = 'none';
+    pkMyline.style.display = 'none';
+    localBar.style.display = '';
+    updLocal();
+    pkInitBoard(null);
+    startCountdown(function () { startTicking(); });
+  }
+
+  function pkCheckEnd() {
+    var maxV = maxOnBoard();
+    if (maxV >= 2048) { pkFinish('win'); return; }
+    if (!canMove()) { pkFinish('over'); return; }
+    if (pkMode === 'local') switchTurn();
+  }
+
+  function switchTurn() {
+    if (localFinished) return;
+    localTurn = localTurn === 1 ? 2 : 1;
+    updLocal();
+  }
+
+  // PK 加权综合判定：分数组件(0.5) + 步数组件(0.3) + 时间组件(0.2)
+  // 荣誉规则：一方有2048另一方没有 → 直接获胜
+  function pkWinner(a, b) {
+    if (a.has2048 && !b.has2048) return 'A';
+    if (b.has2048 && !a.has2048) return 'B';
+    var maxScore = Math.max(a.score, b.score);
+    var sA = maxScore > 0 ? a.score / maxScore : 0;
+    var sB = maxScore > 0 ? b.score / maxScore : 0;
+    var maxP = Math.max(a.steps, b.steps), minP = Math.min(a.steps, b.steps);
+    var pA = maxP === minP ? 1.0 : (maxP - a.steps) / (maxP - minP);
+    var pB = maxP === minP ? 1.0 : (maxP - b.steps) / (maxP - minP);
+    var maxT = Math.max(a.time, b.time), minT = Math.min(a.time, b.time);
+    var tA = maxT === minT ? 1.0 : (maxT - a.time) / (maxT - minT);
+    var tB = maxT === minT ? 1.0 : (maxT - b.time) / (maxT - minT);
+    var totalA = 0.5 * sA + 0.3 * pA + 0.2 * tA;
+    var totalB = 0.5 * sB + 0.3 * pB + 0.2 * tB;
+    if (Math.abs(totalA - totalB) < 1e-6) return 'draw';
+    return totalA > totalB ? 'A' : 'B';
+  }
+
+  function pkFinish(reason) {
+    if (pkMyFinished) return;
+    pkMyFinished = true;
+    var t = Math.floor(pkMyTime);
+    var maxV = maxOnBoard();
+    pkMyResult = { reason: reason, time: t, moves: pkMyMoves, score: score, max: maxV, has2048: maxV >= 2048 };
+    stopTicking();
+
+    if (pkMode === 'online') {
+      send({ t: 'finish', reason: reason, time: t, moves: pkMyMoves, score: score, max: maxV, has2048: maxV >= 2048 });
+      if (reason === 'win') AudioFX.win(); else AudioFX.lose();
+      if (pkOppResult) {
+        resolvePK();
+      } else {
+        showOverlay(
+          reason === 'win' ? '🎉 你达成 2048 了！' : '💀 你结束了',
+          '分数 ' + score + ' �� 最大 ' + pkMyResult.max + ' · 用时 ' + fmtTime2(t) + ' · ' + pkMyMoves + ' 步' +
+          (reason === 'win' ? '<br>等待对手完成…' : '<br>对手还没结束，等待结果…'),
+          []
+        );
+      }
+    } else {
+      // 同屏
+      if (reason === 'win') AudioFX.win(); else AudioFX.lose();
+      localFinished = true;
+      updLocal();
+      resolveLocal(reason);
+    }
+  }
+
+  function huntTimeout() {
+    pkMyFinished = true;
+    var t = Math.floor(pkMyTime);
+    var maxV = maxOnBoard();
+    pkMyResult = { reason: 'timeout', time: t, moves: pkMyMoves, score: score, max: maxV, has2048: maxV >= 2048 };
+    stopTicking();
+    AudioFX.lose();
+    resolvePK();
+  }
+
+  function resolveLocal(reason) {
+    var title, sub;
+    // 认输：直接判定
+    if (reason === 'surrender') {
+      var loser = localTurn, winner = loser === 1 ? 2 : 1;
+      title = '🏳️ 玩家' + loser + ' 认输，玩家' + winner + ' 获胜！';
+      sub = '玩家1：' + localScores[0] + ' 分 · 用时 ' + fmtTime2(localTimes[0]) + ' · ' + localMoves[0] + ' 步' +
+            '<br>玩家2：' + localScores[1] + ' 分 · 用时 ' + fmtTime2(localTimes[1]) + ' · ' + localMoves[1] + ' 步';
+    } else {
+      // 使用加权综合判定
+      var max1 = maxOnBoardLocal(0); // 需要分别计算——但同屏共用一个棋盘，所以两人最大方块相同
+      // 同屏模式下，两人共用棋盘，最大方块和分数是同一盘面的。我们用 pkFinish 记录的 reason 判断是否有2048
+      var p1 = { score: localScores[0], steps: localMoves[0], time: localTimes[0], has2048: reason === 'win' };
+      var p2 = { score: localScores[1], steps: localMoves[1], time: localTimes[1], has2048: reason === 'win' };
+      var result = pkWinner(p1, p2);
+      sub = '玩家1：' + localScores[0] + ' 分 · 用时 ' + fmtTime2(localTimes[0]) + ' · ' + localMoves[0] + ' 步' +
+            '<br>玩家2：' + localScores[1] + ' 分 · 用时 ' + fmtTime2(localTimes[1]) + ' · ' + localMoves[1] + ' 步';
+      if (reason === 'win') sub = '玩家' + localTurn + ' 合成了 2048（+2048 分）！<br>' + sub;
+      if (result === 'draw') {
+        title = '🤝 平局！';
+      } else {
+        var w = result === 'A' ? 1 : 2;
+        title = '🏆 玩家' + w + ' 获胜！（加权判定：分 50% + 步 30% + 时 20%）';
+      }
+    }
+    showOverlay(title, sub, [
+      { label: '再战一局', action: startLocalPK },
+      { label: '返回主菜单', ghost: true, action: exitPK }
+    ]);
+  }
+
+  function resolvePK() {
+    var my = pkMyResult, opp = pkOppResult;
+    var result;
+    // ① 荣誉规则：一方有2048另一方没有 → 直接获胜
+    if (my.has2048 && !opp.has2048) result = 'A';
+    else if (opp.has2048 && !my.has2048) result = 'B';
+    // ② 比合成的最大数字
+    else if (my.max !== opp.max) result = my.max > opp.max ? 'A' : 'B';
+    // ③ 比得分
+    else if (my.score !== opp.score) result = my.score > opp.score ? 'A' : 'B';
+    else result = 'draw';
+
+    // 投降处理
+    if (my.reason === 'surrender') result = 'B';
+    if (opp.reason === 'surrender') result = 'A';
+
+    // 更新排行榜积分
+    var delta = result === 'A' ? 1 : (result === 'B' ? -1 : 0);
+    updateRank(delta);
+    mergeReport(); // 合成榜：记录本局最大合成数与总分
+    var curScore = (leaderboard.find(function(e){return e.name===userName})||{score:0}).score;
+    var rankNote = '';
+    if (delta !== 0) rankNote = '<br>积分 <span style="color:' + (delta > 0 ? '#4ade80' : '#f87171') + ';font-weight:800;">' + (delta > 0 ? '+' : '') + delta + '</span>（当前 ' + curScore + ' 分）';
+
+    var title = result === 'A' ? (opp.reason === 'surrender' ? '🏳️ 对手认输，你赢了！' : '🏆 你赢了！') : (result === 'B' ? (my.reason === 'surrender' ? '🏳️ 你认输了' : '😢 惜败') : '🤝 平局！');
+    var sub = '你：' + my.score + ' 分 · 最大 ' + my.max + ' · 用时 ' + fmtTime2(my.time) + ' · ' + my.moves + ' 步' +
+              '<br>对手：' + opp.score + ' 分 · 最大 ' + opp.max + ' · 用时 ' + fmtTime2(opp.time) + ' · ' + opp.moves + ' 步' +
+              '<br>判定：荣誉规则 → 最大数字 → 得分' + (my.has2048 !== opp.has2048 ? '（荣誉规则触发）' : '') + rankNote;
+
+    // 胜负动画
+    overlay.classList.remove('win', 'lose', 'draw');
+    if (result === 'A') { overlay.classList.add('win'); spawnConfetti(); }
+    else if (result === 'B') overlay.classList.add('lose');
+    else overlay.classList.add('draw');
+
+    var btns = [
+      { label: '再来一局', ghost: true, action: rematchOnline },
+      { label: '返回主菜单', action: function () { overlay.classList.remove('win','lose','draw'); exitPK(); } }
+    ];
+    if (!connOpen) btns.shift(); // 通道已断则只提供返回
+    showOverlay(title, sub, btns);
+  }
+
+  function onOppFinish() {
+    updOpp();
+    if (pkMyFinished) { resolvePK(); return; }
+    var o = pkOppResult;
+    if (o.reason === 'win') {
+      if (huntLeft <= 0) { huntLeft = 60; AudioFX.hunt(); }
+      updHunt();
+    } else if (o.reason === 'surrender') {
+      // 对手认输 → 我方自动获胜，立刻结算
+      pkMyFinished = true;
+      var t = Math.floor(pkMyTime);
+      var maxV = maxOnBoard();
+      pkMyResult = { reason: 'oppSurrender', time: t, moves: pkMyMoves, score: score, max: maxV, has2048: maxV >= 2048 };
+      stopTicking();
+      AudioFX.win();
+      resolvePK();
+    }
+  }
+
+  function exitPK() {
+    stopTicking();
+    clearTimeout(surTimer);
+    clearTimeout(surTimer2);
+    if (startWaitTimer) { clearTimeout(startWaitTimer); startWaitTimer = null; }
+    if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+    userQuit = true;
+    stopReconnect();
+    lagWarn.classList.remove('show');
+    btnOnlineSur.classList.remove('confirm');
+    btnOnlineSur.textContent = '🏳️ 认输';
+    btnOnlineSur.style.display = 'none';
+    btnSurrender.classList.remove('confirm');
+    btnSurrender.textContent = '🏳️ 认输（轮到谁谁认）';
+    btnQuitOnline.classList.remove('confirm');
+    btnQuitOnline.textContent = '退出';
+    try { if (conn) conn.close(); } catch (e) {}
+    destroyPeer();
+    conn = null; connOpen = false;
+    pkMode = null; pkGo = false; pkMyFinished = false;
+    gameStarted = false;
+    oppGrid = null; oppGridPrev = null;
+    btnOppView.style.display = 'none';
+    closeOppBoard();
+    document.body.classList.remove('no-scroll');
+    overlay.classList.remove('show');
+    pkUiHide();
+    setPkButtons(false);
+    savedThisGame = true; // PK 对局不计入单人战绩（防退出时误存）
+    newGame();
+  }
+
+  function onPeerClose() {
+    if (pkMode !== 'online' || userQuit) return;
+    connOpen = false;
+    if (pkMyFinished) {
+      // 我方已结束但还没等到对方结果 → 对局作废
+      if (!pkOppResult) {
+        showOverlay('对手已断开连接', '对局未完成，结果作废', [
+          { label: '返回主菜单', action: exitPK }
+        ]);
+      }
+      return;
+    }
+    if (hostSide) {
+      // 房主：等待对方自动重连（超 30 秒无消息则判对方离线）
+      showReconnect('⚠️ 对手连接中断，等待对方重连…');
+    } else {
+      // 加入方：主动发起重连（期间可继续操作）
+      startReconnect();
+    }
+  }
+
+  function onPeerMsg(d) {
+    if (!d || typeof d !== 'object') return;
+    lastOppMsg = Date.now(); // 每次收到消息更新延迟检测
+    if (d.t === 'hello') {
+      if (hostSide) {
+        if (gameStarted) {
+          // 对方刷新页面 / 断线重连：重置对手面板并同步状态继续对局
+          // 晚加入者用原种子重新开局（公平起见它从新棋盘开始，但可看到我方当前进度）
+          oppMoves = 0; oppScore = 0; oppMax = 0; oppTime = 0;
+          prevGridSum = -1; prevOppMoves = -1; prevOppScore = -1;
+          renderMini(miniEl, emptyBoard());
+          updOpp();
+          lastOppMsg = Date.now();
+          send({ t: 'start', seed: roomSeed });
+          send(myStatePayload());
+          showReconnect('✅ 对手已重连，状态已同步');
+          setTimeout(hideReconnect, 2500);
+        } else {
+          var seed = Math.floor(Math.random() * 1e9);
+          send({ t: 'start', seed: seed });
+          startOnlineGame(seed);
+        }
+      }
+    } else if (d.t === 'start') {
+      startOnlineGame(d.seed);
+    } else if (d.t === 'resync') {
+      // 对方重连成功，回复我方完整状态
+      send(myStatePayload());
+    } else if (d.t === 'sync') {
+      applyOppState(d);
+    } else if (d.t === 'rematch-req') {
+      if (hostSide && connOpen) {
+        var s2 = Math.floor(Math.random() * 1e9);
+        send({ t: 'start', seed: s2 });
+        startOnlineGame(s2);
+      }
+    } else if (d.t === 'move') {
+      if (!validateOppMove(d)) { console.warn('[PK] 收到异常移动数据，已忽略'); return; }
+      var g = d.grid;
+      if (g) {
+        for (var ri = 0; ri < SIZE; ri++)
+          for (var ci = 0; ci < SIZE; ci++)
+            if (g[ri] && g[ri][ci] > oppMax) oppMax = g[ri][ci];
+        renderMini(miniEl, g);
+        setOppGrid(g, false);
+      }
+      if (typeof d.moves === 'number') oppMoves = d.moves;
+      if (typeof d.score === 'number') oppScore = d.score;
+      updOpp();
+    } else if (d.t === 'time') {
+      oppTime = d.time;
+      updOpp();
+    } else if (d.t === 'finish') {
+      pkOppResult = { reason: d.reason, time: d.time, moves: d.moves, score: d.score || 0, max: d.max || 0, has2048: d.has2048 || false };
+      onOppFinish();
+    } else if (d.t === 'surrender') {
+      // 对手认输
+      pkOppResult = { reason: 'surrender', time: oppTime, moves: oppMoves, score: oppScore, max: oppMax, has2048: false };
+      onOppFinish();
+    } else if (d.t === 'ping') {
+      if (typeof d.ts === 'number') send({ t: 'pong', ts: d.ts });
+      else send({ t: 'pong' });
+    } else if (d.t === 'pong') {
+      if (typeof d.ts === 'number') {
+        rtt = Math.max(0, Date.now() - d.ts);
+        updOpp();
+      }
+    }
+  }
+
+  /* ---- 名片点击改昵称 ---- */
+  document.getElementById('pk-my-name').addEventListener('click', function () {
+    if (!pkMode) return;
+    var newName = prompt('修改对战昵称（会同步到排行榜）：', userName);
+    if (newName !== null && newName.trim()) {
+      setUserName(newName.trim());
+      document.getElementById('pk-my-name').textContent = '🦐 ' + userName + '：';
+    }
+  });
+
+  /* ---- 认输 / 退出 ---- */
+  btnSurrender.addEventListener('click', function () {
+    if (localFinished || pkMode !== 'local') return;
+    if (!btnSurrender.classList.contains('confirm')) {
+      btnSurrender.classList.add('confirm');
+      btnSurrender.textContent = '⚠️ 确认认输？对方将获胜';
+      clearTimeout(surTimer);
+      surTimer = setTimeout(function () {
+        btnSurrender.classList.remove('confirm');
+        btnSurrender.textContent = '🏳️ 认输（轮到谁谁认）';
+      }, 3000);
+      return;
+    }
+    clearTimeout(surTimer);
+    AudioFX.lose();
+    localFinished = true;
+    pkMyFinished = true;
+    stopTicking();
+    updLocal();
+    resolveLocal('surrender');
+  });
+
+  btnQuitOnline.addEventListener('click', function () {
+    if (pkMode !== 'online') return;
+    if (!btnQuitOnline.classList.contains('confirm')) {
+      btnQuitOnline.classList.add('confirm');
+      btnQuitOnline.textContent = '确认退出？';
+      clearTimeout(surTimer2);
+      surTimer2 = setTimeout(function () {
+        btnQuitOnline.classList.remove('confirm');
+        btnQuitOnline.textContent = '退出';
+      }, 3000);
+      return;
+    }
+    clearTimeout(surTimer2);
+    exitPK();
+  });
+
+  /* ---- 放弃重连 / 关闭页面自动认输 ---- */
+  document.getElementById('btn-reconnect-quit').addEventListener('click', function () {
+    if (pkMode !== 'online') return;
+    stopReconnect();
+    if (!pkMyFinished) {
+      stopTicking();
+      showOverlay('已放弃对局', '连接未恢复，对局终止', [
+        { label: '返回主菜单', action: exitPK }
+      ]);
+    }
+  });
+  window.addEventListener('beforeunload', function () {
+    if (pkMode === 'online' && !pkMyFinished) {
+      try { if (conn && conn.open) conn.send({ t: 'surrender' }); } catch (e) {}
+    }
+  });
+
+  /* ---- 在线认输 ---- */
+  btnOnlineSur.addEventListener('click', function () {
+    if (pkMode !== 'online' || pkMyFinished) return;
+    if (!btnOnlineSur.classList.contains('confirm')) {
+      btnOnlineSur.classList.add('confirm');
+      btnOnlineSur.textContent = '⚠️ 确认认输？';
+      clearTimeout(surTimer);
+      surTimer = setTimeout(function () {
+        btnOnlineSur.classList.remove('confirm');
+        btnOnlineSur.textContent = '🏳️ 认输';
+      }, 3000);
+      return;
+    }
+    clearTimeout(surTimer);
+    AudioFX.lose();
+    pkMyFinished = true;
+    var t = Math.floor(pkMyTime);
+    var maxV = maxOnBoard();
+    pkMyResult = { reason: 'surrender', time: t, moves: pkMyMoves, score: score, max: maxV, has2048: maxV >= 2048 };
+    stopTicking();
+    send({ t: 'surrender' });
+    // 直接结算：如果对手已结束用真实数据，否则填充占位
+    if (!pkOppResult) pkOppResult = { reason: 'oppSurrender', time: 0, moves: 0, score: 0, max: 0, has2048: false };
+    resolvePK();
+  });
+
+  /* ---- 对手棋盘大图（实时） ---- */
+  btnOppView.addEventListener('click', openOppBoard);
+  document.getElementById('pk-opp-close').addEventListener('click', closeOppBoard);
+  document.getElementById('pk-opp-modal').addEventListener('click', function (e) {
+    if (e.target === document.getElementById('pk-opp-modal')) closeOppBoard();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && oppModalOpen) closeOppBoard();
+  });
+
+  /* ---- PK 弹窗 ---- */
+  function errMsg(msg) {
+    var el = document.getElementById('pk-err');
+    if (el) el.textContent = msg;
+  }
+  function closeModal() { pkModal.classList.remove('show'); document.body.classList.remove('no-scroll'); }
+  document.getElementById('pk-close').addEventListener('click', closeModal);
+
+  btnPk.addEventListener('click', function () {
+    if (pkMode) return;
+    var nameTip = userName ? ('<div style="text-align:center;color:#fbbf24;font-size:13px;margin-bottom:4px;">昵称：<b>' + userName + '</b> <a href="#" id="pk-change-name" style="color:#94a3b8;font-size:11px;">修改</a></div>') : '';
+    pkModalBody.innerHTML =
+      nameTip +
+      '<div class="mode-btns">' +
+        '<button class="mode-btn" id="mode-online"><div class="big">🌐 在线对战</div><div class="small">邀请好友 · 实时互看进度</div></button>' +
+        '<button class="mode-btn" id="mode-local"><div class="big">📱 同屏轮流</div><div class="small">一台设备轮流玩</div></button>' +
+      '</div>' +
+      '<div class="pk-rules"><b>🏅 荣誉规则</b>：一方合成 2048 而另一方未合成 → 直接获胜<br><b>📐 判定顺序</b>：荣誉规则 → 最大数字 → 得分（不再计算时间和步数加权）<br>🌐 <b>在线</b>：双方各自棋盘（开局相同），实时互看对方进度；对手先达成 2048 你有 60 秒追赶<br>🔌 <b>断线自动重连</b>：网络抖动会自动恢复对局并同步双方状态，重连期间可继续操作<br>📱 <b>同屏</b>：同一棋盘轮流落子，合成得分归当前玩家，认输直接判负</div>';
+    document.getElementById('mode-online').addEventListener('click', function () {
+      ensureUserName(function () {
+      if (typeof Peer === 'undefined') {
+        pkModalBody.innerHTML =
+          '<div class="pk-err" id="pk-err">在线服务加载失败（需要联网加载 PeerJS）<br>请使用「同屏轮流」模式</div>' +
+          '<button class="menu-btn" id="pk-back-online">返 回</button>';
+        document.getElementById('pk-back-online').addEventListener('click', function () { btnPk.click(); });
+        return;
+      }
+      checkPeerStatus();
+      pkModalBody.innerHTML =
+        '<div class="mode-btns">' +
+          '<button class="mode-btn" id="pk-host-btn"><div class="big">🎯 创建房间</div><div class="small">邀请好友加入</div></button>' +
+          '<button class="mode-btn" id="pk-join-btn"><div class="big">🔑 加入房间</div><div class="small">输入好���房间号</div></button>' +
+        '</div>' +
+        '<div class="pk-err" id="peer-status"></div>' +
+        '<div class="pk-rules">把房间号发给好友即可开始对战；对战双方可实时看到对方的棋盘进度。<br>好友在任意浏览器打开本文件即可加入，无需安装任何东西。<br><b>无需同一局域网</b>——互联网 P2P 直连，连不上自动走云端中继。</div>';
+      document.getElementById('pk-host-btn').addEventListener('click', hostOnline);
+      document.getElementById('pk-join-btn').addEventListener('click', function () {
+        pkModalBody.innerHTML =
+          '<input class="code-input" id="pk-code-input" maxlength="4" placeholder="房间号" autocomplete="off">' +
+          '<div class="pk-err" id="pk-err"></div>' +
+          '<button class="menu-btn" id="pk-dojoin">🔑 加入</button>' +
+          '<button class="menu-btn ghost" id="pk-back">返回</button>';
+        var input = document.getElementById('pk-code-input');
+        input.addEventListener('input', function () { input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+        document.getElementById('pk-dojoin').addEventListener('click', doJoin);
+        document.getElementById('pk-back').addEventListener('click', function () { btnPk.click(); });
+      });
+    });
+  });
+    document.getElementById('mode-local').addEventListener('click', startLocalPK);
+    document.body.classList.add('no-scroll');
+    pkModal.classList.add('show');
+    var nameLink = document.getElementById('pk-change-name');
+    if (nameLink) {
+      nameLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        var newName = prompt('设置对战昵称（会同步到排行榜）：', userName);
+        if (newName !== null && newName.trim()) {
+          setUserName(newName.trim());
+          btnPk.click(); // 刷新弹窗
+        }
+      });
+    }
+  });
+
+  function doJoin() {
+    var code = (document.getElementById('pk-code-input').value || '').trim().toUpperCase();
+    if (code.length !== 4) { errMsg('请输入 4 位房间号'); return; }
+    hostSide = false;
+    roomCode = code;
+    gameStarted = false;
+    userQuit = false;
+    errMsg('正在通过互联网连接…');
+    destroyPeer();
+    var jTimer = setTimeout(function () { errMsg('❌ 连接超时（20 秒），请检查网络或确认房间号'); destroyPeer(); }, 20000);
+    peer = new Peer({ debug: 1, config: PK_ICE });
+    pendingPeer = peer;
+    peer.on('open', function () {
+      pendingPeer = null;
+      var c = peer.connect('shami2048-' + code, { reliable: true });
+      var cTimer = setTimeout(function () {
+        if (c && !c.open) { try { c.close(); } catch (e) {} errMsg('❌ 连接超时：房主可能已离线或网络受限'); destroyPeer(); }
+      }, 15000);
+      c.on('open', function () {
+        clearTimeout(jTimer); clearTimeout(cTimer);
+        attachConn(c);
+        onJoinConnOpen();
+      });
+      c.on('error', function () {
+        clearTimeout(jTimer); clearTimeout(cTimer);
+        errMsg('❌ 连接失败：无法建立对等连接（可能需要开启 TURN 中继）');
+        destroyPeer();
+      });
+    });
+    peer.on('error', function (err) {
+      clearTimeout(jTimer);
+      if (err.type === 'peer-unavailable') errMsg('❌ 房间不存在，请确认房间号');
+      else if (err.type === 'network') errMsg('❌ 无法连接联机服务器，请检查网络后重试');
+      else if (err.type === 'server-error') errMsg('❌ 联机服务器暂时不可用，请稍后重试');
+      else if (err.type === 'browser-incompatible') errMsg('❌ 当前浏览器不支持 WebRTC，请换用 Chrome/Edge/Safari');
+      else errMsg('❌ 连接失败：' + err.type);
+      destroyPeer();
+    });
+    peer.on('disconnected', function () { try { peer.reconnect(); } catch (e) {} });
+  }
+
+  function checkPeerStatus() {
+    var el = document.getElementById('peer-status');
+    if (!el) return;
+    if (window.__peerStatus === 'fail' || (!window.Peer && window.__peerStatus !== 'loading')) {
+      el.textContent = '⚠️ 联机组件加载失败，请检查网络后刷新页面，或改用同屏模式';
+      return;
+    }
+    if (window.Peer) {
+      el.textContent = '✅ 联机服务已就绪（跨浏览器/跨设备/跨网络）';
+      return;
+    }
+    el.textContent = '⏳ 正在加载联机组件…';
+    var iv = setInterval(function () {
+      if (window.Peer) { el.textContent = '✅ 联机服务已就绪（跨浏览器/跨设备/跨网络）'; clearInterval(iv); }
+      else if (window.__peerStatus === 'fail') { el.textContent = '⚠️ 联机组件加载失败，请检查网络后刷新页面'; clearInterval(iv); }
+    }, 300);
+  }
+
+  function hostOnline() {
+    if (typeof Peer === 'undefined') { errMsg('在线服务加载失败'); return; }
+    hostSide = true;
+    pkModalBody.innerHTML =
+      '<div class="pk-code-title">你的房间号</div>' +
+      '<div class="pk-code" id="pk-room-code"></div>' +
+      '<div class="pk-waiting" id="pk-waiting">正在创建房间…（互联网联机，无需同一局域网）</div>' +
+      '<div class="pk-err" id="pk-err"></div>' +
+      '<div class="pk-rules">好友在任意设备/浏览器打开本文件 → PK 对战 → 加入房间 → 输入上方房间号即可。<br>也可以把房间号直接发给好友。</div>' +
+      '<button class="menu-btn ghost" id="pk-cancel">取消</button>';
+    document.getElementById('pk-cancel').addEventListener('click', function () {
+      destroyPeer();
+      btnPk.click();
+    });
+    var code = genCode();
+    roomCode = code;
+    gameStarted = false;
+    userQuit = false;
+    var tries = 0;
+    function makePeer() {
+      if (tries > 8) { errMsg('创建房间失败，请重试'); return; }
+      tries++;
+      destroyPeer();
+      var p = new Peer('shami2048-' + code, { debug: 1, config: PK_ICE });
+      peer = p; pendingPeer = p;
+      p.on('open', function () {
+        pendingPeer = null;
+        var w = document.getElementById('pk-waiting');
+        if (w) w.textContent = '房间已就绪，等待好友加入…（互联网联机，无需同一局域网）';
+      });
+      p.on('disconnected', function () { try { p.reconnect(); } catch (e) {} });
+      p.on('error', function (err) {
+        if (err.type === 'unavailable-id') {
+          code = genCode();
+          roomCode = code;
+          var rc = document.getElementById('pk-room-code');
+          if (rc) rc.textContent = code;
+          makePeer();
+        } else if (err.type === 'network') {
+          errMsg('❌ 无法连接联机服务器，请检查网络后重试');
+        } else if (err.type === 'server-error') {
+          errMsg('❌ 联机服务器暂时不可用，请稍后重试');
+        } else if (err.type === 'browser-incompatible') {
+          errMsg('❌ 当前浏览器不支持 WebRTC，请换用 Chrome/Edge/Safari');
+        } else {
+          errMsg('❌ 创建失败：' + err.type);
+        }
+      });
+      p.on('connection', function (c) {
+        var old = conn;
+        if (old && old !== c) { try { old.close(); } catch (e) {} }
+        conn = c;
+        c.on('open', function () {
+          connOpen = true;
+          var w = document.getElementById('pk-waiting');
+          if (w) w.textContent = '✅ 好友已加入！准备开局…';
+          AudioFX.join();
+          attachConn(c);
+          if (gameStarted) {
+            // 对方断线/刷新后重连：重置对手面板，交换状态继续对局
+            oppMoves = 0; oppScore = 0; oppMax = 0; oppTime = 0;
+            prevGridSum = -1; prevOppMoves = -1; prevOppScore = -1;
+            renderMini(miniEl, emptyBoard());
+            updOpp();
+            lastOppMsg = Date.now();
+            send(myStatePayload());
+            showReconnect('✅ 对手已重连，状态已同步');
+            setTimeout(hideReconnect, 2500);
+          } else {
+            send({ t: 'hello' });
+          }
+        });
+      });
+    }
+    document.getElementById('pk-room-code').textContent = code;
+    var copyBtn = document.createElement('button');
+    copyBtn.id = 'pk-copy-code';
+    copyBtn.className = 'menu-btn';
+    copyBtn.textContent = '📋 复制房间号';
+    copyBtn.style.marginTop = '6px';
+    copyBtn.addEventListener('click', function () { copyRoomCode(code); });
+    document.getElementById('pk-waiting').insertAdjacentElement('afterend', copyBtn);
+    makePeer();
+  }
+
+  /* ================= 键盘 / 触摸 ================= */
+  var KEYMAP = {
+    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+    w: 'up', s: 'down', a: 'left', d: 'right',
+    W: 'up', S: 'down', A: 'left', D: 'right'
+  };
+  document.addEventListener('keydown', function (e) {
+    var dir = KEYMAP[e.key];
+    if (dir) {
+      e.preventDefault();
+      move(dir);
+    }
+  });
+
+  var ts = null;
+  boardEl.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    ts = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, { passive: false });
+  boardEl.addEventListener('touchend', function (e) {
+    if (!ts) return;
+    var dx = e.changedTouches[0].clientX - ts.x;
+    var dy = e.changedTouches[0].clientY - ts.y;
+    ts = null;
+    var ax = Math.abs(dx), ay = Math.abs(dy);
+    if (Math.max(ax, ay) < 24) return;
+    if (ax > ay) move(dx > 0 ? 'right' : 'left');
+    else move(dy > 0 ? 'down' : 'up');
+  }, { passive: true });
+
+  window.addEventListener('resize', function () {
+    boardEl.classList.add('no-anim');
+    for (var i = 0; i < tiles.length; i++) renderTile(tiles[i], false);
+    void boardEl.offsetWidth;
+    boardEl.classList.remove('no-anim');
+  });
+
+  bestEl.textContent = best;
+  newGame();
+  renderHistory();
+})();
+</script>
+</body>
+</html>
