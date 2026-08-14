@@ -6,7 +6,8 @@
   <title>🔄 转专业 | 安工大新生攻略</title>
   <meta name="description" content="安徽工业大学转专业指南：转专业是什么、基本条件、通用流程、注意事项。具体政策以学校教务处最新通知为准">
   <meta name="theme-color" content="#0f4c81">
-  <link rel="stylesheet" href="css/style.css?v=20260811">
+    <style>html{background:#f6f9fc}</style>
+<link rel="stylesheet" href="css/style.css?v=20260811">
 </head>
 <body>
 
@@ -28,7 +29,8 @@
   <a href="campus.html"><span class="nav-icon">📍</span><span>校区信息</span></a>
   <a href="clubs.html"><span class="nav-icon">🎯</span><span>校园生活</span></a>
   <a href="tips.html"><span class="nav-icon">💡</span><span>学长忠告</span></a>
-  <div class="sidebar-foot">⚠️ 非官方平台<br>内容仅供参考，请以学校官方通知为准</div>
+
+  <a href="official.html"><span class="nav-icon">🔗</span><span>官网链接</span></a>  <div class="sidebar-foot">⚠️ 非官方平台<br>内容仅供参考，请以学校官方通知为准</div>
 </nav>
 <div class="sidebar-mask" id="sidebar-mask"></div>
 
@@ -37,7 +39,8 @@
 <!-- ================= Hero ================= -->
 <header class="hero">
   <span class="badge">🔄 转专业</span>
-  <h1>不喜欢现在的专业？还有一次选择机会</h1>
+  <button class="search-btn" id="search-btn" aria-label="全站搜索">🔍</button>
+<h1>不喜欢现在的专业？还有一次选择机会</h1>
   <p class="sub">转专业是什么、怎么申请、要注意什么</p>
   <p class="tag">具体政策以<b>教务处</b>最新通知为准</p>
 </header>
@@ -68,7 +71,7 @@
     <p class="lead">各校具体标准不同，以下为常见要求，请以学校教务处发布的《转专业管理办法》为准</p>
     <div class="grid2">
       <div class="item">
-        <b>📈 学业成绩（底线，不是比拼点）</b>
+        <b>📈 学业成绩（底线，不是拿来比拼的点）</b>
         <div class="desc">通常要求无不及格课程——这是基本底线。绩点达标即可，往年实际录取中，面试表现和综合能力往往比绩点高低更关键，不必为绩点焦虑内卷</div>
       </div>
       <div class="item">
@@ -171,7 +174,7 @@
     <div class="wechat-modal-body">
       <p class="wechat-label">微信号</p>
       <div class="wechat-id-box" id="wechat-id-1">_17205683416</div>
-      <p class="wechat-note">🎓 本站为电院学长制作 · 遇到各类问题，比如转专业·个人规划·考研保研·网站bug，欢迎添加微信交流和反馈</p>
+      <p class="wechat-note">🎓 本站为电院学长及其工作室制作 · 遇到各类问题，比如转专业·个人规划·考研保研·网站bug，欢迎添加微信交流和反馈</p>
       <p class="wechat-hint">👇 点击下方按钮即可复制微信号，打开微信加好友</p>
       <div class="wechat-actions">
         <button class="wechat-btn wechat-btn-outline" id="qq-modal-close">稍后再说</button>
@@ -208,4 +211,252 @@
 })();
 </script>
 
+
+
+<script>
+// 预加载：空闲时预取全站页面，跳转更流畅
+(function(){
+  var preloadPages=['index.html','prepare.html','report.html','military.html','study.html','transfer.html','awards.html','plan.html','colleges.html','campus.html','clubs.html','tips.html'];
+  var cur=(location.pathname.split('/').pop()||'index.html');
+  function doPrefetch(){
+    preloadPages.forEach(function(p){
+      if(p===cur)return;
+      var l=document.createElement('link');
+      l.rel='prefetch';l.href=p;
+      document.head.appendChild(l);
+    });
+    var li=document.createElement('link');li.rel='prefetch';li.href='search-index.json?v=20260813';document.head.appendChild(li);
+  }
+  if('requestIdleCallback' in window){requestIdleCallback(doPrefetch,{timeout:3000});}
+  else{setTimeout(doPrefetch,1500);}
+})();
+</script>
+
+<script>
+// 软导航：无闪烁页面切换（内容原地替换 + 历史记录）
+(function(){
+  var cache={};
+  function load(url,cb){
+    if(cache[url]){cb(cache[url]);return;}
+    fetch(url).then(function(r){if(!r.ok)throw 0;return r.text();})
+      .then(function(h){cache[url]=h;cb(h);})
+      .catch(function(){window.location.href=url;});
+  }
+  function apply(url,html){
+    var d=document.createElement('div');
+    d.innerHTML=html;
+    var hero=d.querySelector('.main .hero');
+    var wrap=d.querySelector('.main .wrap');
+    var main=document.querySelector('.main');
+    var oh=main.querySelector('.hero');
+    var ow=main.querySelector('.wrap');
+    if(hero&&oh)oh.outerHTML=hero.outerHTML;
+    if(wrap&&ow)ow.outerHTML=wrap.outerHTML;
+    var t=(html.match(/<title>([^<]*)<\/title>/)||[])[1];
+    if(t)document.title=t;
+    document.querySelectorAll('.sidebar-nav a,.bottom-nav a').forEach(function(a){
+      a.classList.toggle('active',a.getAttribute('href')===url);
+    });
+    window.scrollTo(0,0);
+  }
+  document.addEventListener('click',function(e){
+    var a=e.target.closest?e.target.closest('a'):null;
+    if(!a)return;
+    var href=a.getAttribute('href')||'';
+    if(href.indexOf('.html')<0||/^https?:/i.test(href)||href.charAt(0)==='#')return;
+    e.preventDefault();
+    load(href,function(h){apply(href,h);history.pushState({url:href},'',href);});
+  });
+  window.addEventListener('popstate',function(e){
+    var u=e.state&&e.state.url;
+    if(u){load(u,function(h){apply(u,h);});}
+  });
+})();
+</script>
+
+
+<script>
+// 返回键防退出：站内无上一页历史时（如微信/QQ直接打开链接），返回键回到站点首页
+(function(){
+  if (window.history.length <= 1) {
+    window.history.pushState({ ahutGuard: true }, '', location.href);
+    window.addEventListener('popstate', function(e){
+      if (e.state && e.state.ahutGuard) {
+        window.location.href = 'index.html';
+      }
+    });
+  }
+})();
+</script>
+
+
+<!-- 全站搜索 -->
+<div class="search-modal" id="search-modal" role="dialog" aria-label="全站搜索">
+  <div class="search-box">
+    <div class="search-head">
+      <input type="search" id="search-input" placeholder="搜索全站内容，如：转专业、军训、绩点…" autocomplete="off">
+      <button class="search-close" id="search-close" aria-label="关闭">×</button>
+    </div>
+    <div class="search-results" id="search-results">
+      <p class="search-empty">输入关键词开始搜索（如：转专业、军训、绩点）</p>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var btn=document.getElementById('search-btn');
+  var modal=document.getElementById('search-modal');
+  var input=document.getElementById('search-input');
+  var results=document.getElementById('search-results');
+  var idx=null;
+  var HIST_KEY='ahutSearchHistory';
+  var debounce=null;
+  if(!btn||!modal)return;
+  function getHist(){try{return JSON.parse(localStorage.getItem(HIST_KEY))||[];}catch(e){return[];}}
+  function saveHist(h){try{localStorage.setItem(HIST_KEY,JSON.stringify(h.slice(0,10)));}catch(e){}}
+  function addHist(q){
+    q=(q||'').trim();if(!q)return;
+    var h=getHist().filter(function(x){return x!==q;});
+    h.unshift(q);saveHist(h);
+  }
+  function openS(){modal.classList.add('show');setTimeout(function(){input.focus();renderHist();},120);}
+  function closeS(){modal.classList.remove('show');}
+  document.addEventListener('click',function(e){
+    if(e.target.closest&&e.target.closest('#search-btn'))openS();
+  });
+  modal.addEventListener('click',function(e){if(e.target===modal)closeS();});
+  var sc=document.getElementById('search-close');
+  if(sc)sc.addEventListener('click',closeS);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeS();});
+  function loadIdx(cb){
+    if(idx){cb();return;}
+    fetch('search-index.json?v=20260813',{cache:'force-cache'})
+      .then(function(r){return r.json();})
+      .then(function(d){idx=d;cb();})
+      .catch(function(){results.innerHTML='<p class="search-empty">索引加载失败，请检查网络后重试</p>';});
+  }
+  function snip(text,q){
+    var i=text.indexOf(q);
+    if(i<0)return text.slice(0,60)+'…';
+    var s=Math.max(0,i-20);
+    var e=Math.min(text.length,i+q.length+45);
+    return (s>0?'…':'')+text.slice(s,e)+(e<text.length?'…':'');
+  }
+  function doSearch(q){
+    q=(q||'').trim();
+    if(!q){renderHist();return;}
+    addHist(q);
+    loadIdx(function(){
+      var hits=[];
+      idx.forEach(function(item){
+        if(item.title.indexOf(q)>=0)hits.push({item:item,score:0});
+        else if(item.text.indexOf(q)>=0)hits.push({item:item,score:1});
+      });
+      hits.sort(function(a,b){return a.score-b.score;});
+      if(!hits.length){results.innerHTML='<p class="search-empty">未找到与「'+q+'」相关的内容</p>';return;}
+      var html='';
+      hits.slice(0,12).forEach(function(h){
+        html+='<a class="search-hit" href="'+h.item.url+'">'+
+          '<span class="sh-title">'+h.item.title+'</span>'+
+          '<span class="sh-snip">'+snip(h.item.text,q)+'</span>'+
+          '</a>';
+      });
+      results.innerHTML=html;
+      // 预取前3个结果页，点击秒开
+      var pf=0;
+      hits.slice(0,3).forEach(function(h){
+        var l=document.createElement('link');
+        l.rel='prefetch';l.href=h.item.url;
+        document.head.appendChild(l);
+      });
+    });
+  }
+  function renderHist(){
+    var h=getHist();
+    if(!h.length){results.innerHTML='<p class="search-empty">输入关键词开始搜索（如：转专业、军训、绩点）</p>';return;}
+    var html='<div class="sh-head"><span>🕘 搜索历史</span><button class="sh-clear" id="sh-clear">🗑 清空</button></div>';
+    h.forEach(function(w){
+      html+='<div class="sh-item"><button class="sh-word" data-w="'+w+'">'+w+'</button><button class="sh-del" data-w="'+w+'" aria-label="删除">×</button></div>';
+    });
+    results.innerHTML=html;
+    var clear=document.getElementById('sh-clear');
+    if(clear)clear.addEventListener('click',function(){saveHist([]);renderHist();});
+    results.querySelectorAll('.sh-word').forEach(function(b){
+      b.addEventListener('click',function(){
+        var w=b.getAttribute('data-w');input.value=w;doSearch(w);
+      });
+    });
+    results.querySelectorAll('.sh-del').forEach(function(b){
+      b.addEventListener('click',function(){
+        var w=b.getAttribute('data-w');
+        saveHist(getHist().filter(function(x){return x!==w;}));
+        renderHist();
+      });
+    });
+  }
+  input.addEventListener('input',function(){
+    var q=input.value.trim();
+    if(!q){renderHist();return;}
+    clearTimeout(debounce);
+    debounce=setTimeout(function(){doSearch(q);},300);
+  });
+})();
+</script>
+
+
+<!-- 欢迎弹窗 -->
+<div class="welcome-modal" id="welcome-modal" role="dialog" aria-label="新生群">
+  <div class="welcome-card">
+    <button class="welcome-close" id="welcome-close" aria-label="关闭">×</button>
+    <div class="welcome-title">安工大26级新生群</div>
+    <div class="welcome-text">欢迎大家加入安工大26级新生群，本群为2026级准新生提供交流咨询平台，可以咨询关于学校的相关问题</div>
+    <img class="welcome-qr" src="images/qr-code.png" alt="安工大26级新生群二维码">
+    <div class="welcome-group">群聊：安工大2026级新生群</div>
+    <p class="welcome-hint">👆 点击二维码放大 · 长按可保存</p>
+    <button class="welcome-btn" id="welcome-btn">我知道了</button>
+  </div>
+</div>
+<script>
+(function(){
+  var wm=document.getElementById('welcome-modal');
+  if(!wm)return;
+  function closeW(){wm.classList.remove('show');}
+  function openW(){wm.classList.add('show');}
+  var shown=sessionStorage.getItem('ahutWelcome');
+  if(!shown){
+    sessionStorage.setItem('ahutWelcome','1');
+    setTimeout(openW,700);
+  }
+  var wb=document.getElementById('welcome-btn');
+  var wc=document.getElementById('welcome-close');
+  if(wb)wb.addEventListener('click',closeW);
+  var wq=document.querySelector('.welcome-qr');
+  if(wq){
+    wq.addEventListener('click',function(){
+      var lbx=document.getElementById('lightbox');
+      var lix=document.getElementById('lightbox-img');
+      if(lbx&&lix){lix.src=wq.src;lbx.classList.add('show');}
+    });
+  }
+  if(wc)wc.addEventListener('click',closeW);
+  wm.addEventListener('click',function(e){if(e.target===wm)closeW();});
+})();
+</script>
+
+<!-- Lightbox 图片放大 -->
+<div class="lightbox" id="lightbox" role="dialog" aria-label="放大图片">
+  <img id="lightbox-img" alt="放大图片">
+  <span class="lb-close" id="lb-close" aria-label="关闭">×</span>
+</div>
+<script>
+(function(){
+  var lb=document.getElementById('lightbox');
+  if(!lb)return;
+  function closeLb(){lb.classList.remove('show');}
+  lb.addEventListener('click',closeLb);
+  var x=document.getElementById('lb-close');
+  if(x)x.addEventListener('click',closeLb);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLb();});
+})();
+</script>
 </body>
